@@ -31,9 +31,22 @@ jobs:
       - name: Extract project
         run: unzip Karkard_Android_Project.zip -d project
 
-      - name: Align Java and Kotlin versions
+     
+      - name: Fix Java and Kotlin targets
         run: |
-          find project -type f -name '*.gradle.kts' -exec sed -i 's/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g; s/jvmTarget = "1.8"/jvmTarget = "17"/g' {} +
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("project")
+          for path in root.rglob("*"):
+              if path.is_file() and path.name in ("build.gradle.kts", "build.gradle"):
+                  text = path.read_text()
+                  text = text.replace("VERSION_1_8", "VERSION_17")
+                  text = text.replace('"1.8"', '"17"')
+                  text = text.replace("'1.8'", "'17'")
+                  path.write_text(text)
+                  print(f"Checked: {path}")
+          PY
 
       - name: Build APK
         run: gradle -p project assembleDebug
