@@ -31,21 +31,32 @@ jobs:
       - name: Extract project
         run: unzip Karkard_Android_Project.zip -d project
 
-     
-      - name: Fix Java and Kotlin targets
+      - name: Set Java and Kotlin JVM target to 17
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          root = Path("project")
-          for path in root.rglob("*"):
-              if path.is_file() and path.name in ("build.gradle.kts", "build.gradle"):
-                  text = path.read_text()
-                  text = text.replace("VERSION_1_8", "VERSION_17")
-                  text = text.replace('"1.8"', '"17"')
-                  text = text.replace("'1.8'", "'17'")
-                  path.write_text(text)
-                  print(f"Checked: {path}")
+          p = Path("project/app/build.gradle.kts")
+          s = p.read_text()
+          marker = "android {\n"
+
+          additions = '''android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          '''
+
+          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+              if marker not in s:
+                  raise SystemExit("Could not find android block")
+              s = s.replace(marker, additions, 1)
+
+          p.write_text(s)
+          print("Java and Kotlin targets set to 17")
           PY
 
       - name: Build APK
