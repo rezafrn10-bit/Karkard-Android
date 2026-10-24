@@ -1,5 +1,5 @@
 
-name: Build Karkard APK
+name: Build VaghtNegar APK
 
 on:
   workflow_dispatch:
@@ -14,6 +14,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,40 +28,39 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract project
-        run: unzip Karkard_Android_Project.zip -d project
-
-      - name: Set Java and Kotlin JVM target to 17
+      - name: Check project archive
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("project/app/build.gradle.kts")
-          s = p.read_text()
-          marker = "android {"
-          additions = """android {
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-          """
-          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
-              if marker not in s:
-                  raise SystemExit("Could not find android block")
-              s = s.replace(marker, additions, 1)
-              p.write_text(s)
-          print("Java and Kotlin targets set to 17")
-          PY
+          echo "Files in repository:"
+          ls -la
+          test -f Karkard_Android_Project.zip
+          unzip -t Karkard_Android_Project.zip
 
-      - name: Build APK
-        run: gradle -p project assembleDebug
+      - name: Extract project
+        run: |
+          mkdir -p project
+          unzip -q Karkard_Android_Project.zip -d project
+          echo "Project files:"
+          find project -maxdepth 4 -type f | head -200
+
+      - name: Locate Gradle wrapper
+        run: |
+          WRAPPER=$(find project -type f -name gradlew | head -1)
+          if [ -z "$WRAPPER" ]; then
+            echo "ERROR: gradlew was not found in the ZIP."
+            exit 1
+          fi
+          echo "Found wrapper: $WRAPPER"
+          echo "PROJECT_DIR=$(dirname "$WRAPPER")" >> "$GITHUB_ENV"
+          chmod +x "$WRAPPER"
+
+      - name: Build debug APK
+        run: |
+          cd "$PROJECT_DIR"
+          ./gradlew assembleDebug
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Karkard-APK
-          path: project/app/build/outputs/apk/debug/*.apk
+          name: VaghtNegar-APK
+          path: project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
