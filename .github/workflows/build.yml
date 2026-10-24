@@ -168,6 +168,44 @@ jobs:
           }
           EOF
 
+      - name: Fix Persian calendar dependency
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          cal = Path("project/app/src/main/java/ir/karkard/app/JalaliCalendar.kt")
+          s = cal.read_text()
+          s = s.replace(
+              "import android.icu.util.PersianCalendar",
+              "import com.ibm.icu.util.PersianCalendar"
+          )
+          s = s.replace(
+              "import android.icu.util.Calendar",
+              "import com.ibm.icu.util.Calendar"
+          )
+          s = s.replace(
+              "import java.util.TimeZone",
+              "import com.ibm.icu.util.TimeZone"
+          )
+          cal.write_text(s)
+
+          gradle_file = Path("project/app/build.gradle.kts")
+          g = gradle_file.read_text()
+          if "com.ibm.icu:icu4j" not in g:
+              marker = "dependencies {"
+              if marker not in g:
+                  raise SystemExit("Could not find dependencies block")
+              pos = g.index(marker) + len(marker)
+              g = (
+                  g[:pos]
+                  + '\n    implementation("com.ibm.icu:icu4j:76.1")'
+                  + g[pos:]
+              )
+              gradle_file.write_text(g)
+
+          print("Persian calendar dependency fixed")
+          PY
+
       - name: Set Java and Kotlin JVM target to 17
         run: |
           python3 - <<'PY'
