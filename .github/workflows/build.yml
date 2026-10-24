@@ -1,0 +1,43 @@
+
+name: Build Karkard APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Karkard_Android_Project.zip'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Extract project
+        run: unzip Karkard_Android_Project.zip -d project
+
+      - name: Build APK
+        run: gradle -p project assembleDebug
+
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Karkard-APK
+          path: project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
