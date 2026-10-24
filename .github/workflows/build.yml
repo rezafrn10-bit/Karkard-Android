@@ -42,16 +42,12 @@ jobs:
           echo "Project files:"
           find project -maxdepth 4 -type f | head -200
 
-      - name: Locate Gradle wrapper
+      - name: Inspect project files
         run: |
-          WRAPPER=$(find project -type f -name gradlew | head -1)
-          if [ -z "$WRAPPER" ]; then
-            echo "ERROR: gradlew was not found in the ZIP."
-            exit 1
-          fi
-          echo "Found wrapper: $WRAPPER"
-          echo "PROJECT_DIR=$(dirname "$WRAPPER")" >> "$GITHUB_ENV"
-          chmod +x "$WRAPPER"
+          echo "Files extracted from ZIP:"
+          find project -maxdepth 6 -type f | head -300
+          echo "Looking for Gradle files:"
+          find project -type f \( -name "gradlew" -o -name "settings.gradle" -o -name "settings.gradle.kts" -o -name "build.gradle" -o -name "build.gradle.kts" \)
 
       - name: Build debug APK
         run: |
