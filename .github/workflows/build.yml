@@ -51,20 +51,9 @@ jobs:
 
       - name: Build debug APK
         run: |
-          WRAPPER=$(find "$GITHUB_WORKSPACE/project" -type f -name gradlew | head -1)
-
-          if [ -z "$WRAPPER" ]; then
-            echo "ERROR: gradlew not found"
-            find "$GITHUB_WORKSPACE/project" -maxdepth 6 -type f | head -300
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$WRAPPER")
-          echo "Using Gradle wrapper: $WRAPPER"
-          cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
+          cd "$GITHUB_WORKSPACE/project"
+          gradle --version
+          gradle assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
