@@ -14,7 +14,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,32 +27,40 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Check project archive
-        run: |
-          test -f Karkard_Android_Project.zip
-          unzip -t Karkard_Android_Project.zip
-
       - name: Extract project
-        run: |
-          mkdir -p project
-          unzip -q Karkard_Android_Project.zip -d project
-          find project -name gradlew -type f
+        run: unzip Karkard_Android_Project.zip -d project
 
-      - name: Build debug APK
+      - name: Set Java and Kotlin JVM target to 17
         run: |
-          if [ -f project/gradlew ]; then
-            cd project
-            chmod +x gradlew
-            ./gradlew assembleDebug
-          else
-            echo "Gradle wrapper not found in project root."
-            echo "Please check the ZIP folder structure."
-            exit 1
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("project/app/build.gradle.kts")
+          s = p.read_text()
+          marker = "android {"
+          additions = """android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          """
+          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+              if marker not in s:
+                  raise SystemExit("Could not find android block")
+              s = s.replace(marker, additions, 1)
+              p.write_text(s)
+          print("Java and Kotlin targets set to 17")
+          PY
+
+      - name: Build APK
+        run: gradle -p project assembleDebug
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Karkard-APK
-          path: project/**/build/outputs/apk/debug/*.apk
+          path: project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
