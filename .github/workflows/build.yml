@@ -31,6 +31,143 @@ jobs:
       - name: Extract project
         run: unzip Karkard_Android_Project.zip -d project
 
+      - name: Add missing Jalali calendar code
+        run: |
+          cat > project/app/src/main/java/ir/karkard/app/JalaliCalendar.kt <<'EOF'
+          package ir.karkard.app
+
+          import android.icu.util.PersianCalendar
+          import android.icu.util.Calendar
+          import java.time.LocalDate
+          import java.time.Instant
+          import java.time.ZoneOffset
+          import java.util.TimeZone
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.grid.GridCells
+          import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+          import androidx.compose.foundation.lazy.grid.items
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.Composable
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.unit.dp
+
+          private val utc = TimeZone.getTimeZone("UTC")
+
+          fun isValidJalali(y: Int, m: Int, d: Int): Boolean {
+              if (m !in 1..12 || d !in 1..31) return false
+              return try {
+                  val c = PersianCalendar(utc).apply {
+                      isLenient = false
+                      clear()
+                      set(Calendar.YEAR, y)
+                      set(Calendar.MONTH, m - 1)
+                      set(Calendar.DAY_OF_MONTH, d)
+                      timeInMillis
+                  }
+                  true
+              } catch (_: Exception) {
+                  false
+              }
+          }
+
+          fun jalaliToGregorian(y: Int, m: Int, d: Int): LocalDate {
+              val c = PersianCalendar(utc).apply {
+                  isLenient = false
+                  clear()
+                  set(Calendar.YEAR, y)
+                  set(Calendar.MONTH, m - 1)
+                  set(Calendar.DAY_OF_MONTH, d)
+              }
+              return Instant.ofEpochMilli(c.timeInMillis)
+                  .atZone(ZoneOffset.UTC).toLocalDate()
+          }
+
+          fun gregorianToJalali(date: LocalDate): Triple<Int, Int, Int> {
+              val c = PersianCalendar(utc)
+              c.timeInMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+              return Triple(
+                  c.get(Calendar.YEAR),
+                  c.get(Calendar.MONTH) + 1,
+                  c.get(Calendar.DAY_OF_MONTH)
+              )
+          }
+
+          fun jalaliMonthLength(y: Int, m: Int): Int = when (m) {
+              in 1..6 -> 31
+              in 7..11 -> 30
+              12 -> if (isValidJalali(y, 12, 30)) 30 else 29
+              else -> 0
+          }
+
+          @Composable
+          fun JalaliCalendarScreen(
+              year: Int,
+              month: Int,
+              selectedDate: String,
+              onMonthChange: (Int, Int) -> Unit,
+              onSelectDate: (String) -> Unit,
+              modifier: Modifier = Modifier
+          ) {
+              val first = jalaliToGregorian(year, month, 1)
+              val offset = (first.dayOfWeek.value + 1) % 7
+              val count = jalaliMonthLength(year, month)
+              val cells = (0 until offset).map { 0 } + (1..count).toList()
+
+              Column(
+                  modifier = modifier.fillMaxSize().padding(12.dp),
+                  verticalArrangement = Arrangement.spacedBy(8.dp)
+              ) {
+                  Row(
+                      modifier = Modifier.fillMaxWidth(),
+                      horizontalArrangement = Arrangement.SpaceBetween
+                  ) {
+                      TextButton(onClick = {
+                          if (month == 1) onMonthChange(year - 1, 12)
+                          else onMonthChange(year, month - 1)
+                      }) { Text("ماه قبل") }
+
+                      Text("$year / $month", style = MaterialTheme.typography.titleLarge)
+
+                      TextButton(onClick = {
+                          if (month == 12) onMonthChange(year + 1, 1)
+                          else onMonthChange(year, month + 1)
+                      }) { Text("ماه بعد") }
+                  }
+
+                  Row(Modifier.fillMaxWidth()) {
+                      listOf("ش", "ی", "د", "س", "چ", "پ", "ج").forEach {
+                          Box(Modifier.weight(1f)) {
+                              Text(it, style = MaterialTheme.typography.labelMedium)
+                          }
+                      }
+                  }
+
+                  LazyVerticalGrid(
+                      columns = GridCells.Fixed(7),
+                      modifier = Modifier.weight(1f),
+                      verticalArrangement = Arrangement.spacedBy(4.dp),
+                      horizontalArrangement = Arrangement.spacedBy(4.dp)
+                  ) {
+                      items(cells) { day ->
+                          if (day == 0) {
+                              Spacer(Modifier.size(36.dp))
+                          } else {
+                              val key = "%04d-%02d-%02d".format(year, month, day)
+                              TextButton(
+                                  onClick = { onSelectDate(key) },
+                                  modifier = Modifier.size(40.dp)
+                              ) {
+                                  Text(
+                                      if (key == selectedDate) "[$day]" else day.toString()
+                                  )
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
       - name: Set Java and Kotlin JVM target to 17
         run: |
           python3 - <<'PY'
