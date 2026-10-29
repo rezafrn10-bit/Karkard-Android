@@ -1,0 +1,62 @@
+
+name: Build VaghtNegar APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Karkard_Android_Project.zip'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Check project archive
+        run: |
+          echo "Files in repository:"
+          ls -la
+          test -f Karkard_Android_Project.zip
+          unzip -t Karkard_Android_Project.zip
+
+      - name: Extract project
+        run: |
+          mkdir -p project
+          unzip -q Karkard_Android_Project.zip -d project
+          echo "Project files:"
+          find project -maxdepth 4 -type f | head -200
+
+      - name: Inspect project files
+        run: |
+          echo "Files extracted from ZIP:"
+          find project -maxdepth 6 -type f | head -300
+          echo "Looking for Gradle files:"
+          find project -type f \( -name "gradlew" -o -name "settings.gradle" -o -name "settings.gradle.kts" -o -name "build.gradle" -o -name "build.gradle.kts" \)
+
+      - name: Build debug APK
+        run: |
+          cd "$GITHUB_WORKSPACE/project"
+          gradle --version
+          gradle assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: VaghtNegar-APK
+          path: project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
