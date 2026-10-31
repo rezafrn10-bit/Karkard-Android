@@ -142,6 +142,40 @@ s = s.replace('''                PersianText("مورخ", fontSize = 21.sp, fontW
 ''', '''                PersianText("موَرِّخ", fontSize = 24.sp, fontFamily = FontFamily(Font(R.font.layla_thuluth)), fontWeight = FontWeight.Normal, color = Color.White, maxLines = 1)
 ''')
 s = s.replace("نسخهٔ برنامه: ۰.۴۳.۰", "نسخهٔ برنامه: ۰.۴۴.۰")
+# Track dirty editor state so calendar defaults never overwrite an unsaved choice.
+s = s.replace('    var workRevision by remember { mutableIntStateOf(0) }',
+              '    var workRevision by remember { mutableIntStateOf(0) }\n    var dayDirty by remember { mutableStateOf(false) }')
+s = s.replace('''            day = db.getDay(date).let { if (db.hasWorkDay(date)) it else it.copy(dayType = defaultDayType(date)) }
+        }
+    }''', '''            day = db.getDay(date).let { if (db.hasWorkDay(date)) it else it.copy(dayType = defaultDayType(date)) }
+            dayDirty = false
+        }
+    }''')
+s = s.replace('''                                day = destination
+                                date = newDate''', '''                                day = destination
+                                dayDirty = false
+                                date = newDate''')
+s = s.replace('''                            day = updated.copy(date = date)
+                        },''', '''                            day = updated.copy(date = date)
+                            dayDirty = true
+                        },''')
+s = s.replace('onSaved = { saved -> day = saved; date = saved.date; refresh++; workRevision++ }',
+              'onSaved = { saved -> day = saved; dayDirty = false; date = saved.date; refresh++; workRevision++ }')
+s = s.replace('''                            day = reset
+                            workRevision++''', '''                            day = reset
+                            dayDirty = false
+                            workRevision++''')
+s = s.replace('date = date, rawDay = day,', 'date = date, rawDay = day, isDayDirty = dayDirty,')
+s = s.replace('''    rawDay: WorkDay,
+    jalaliYear: Int,''', '''    rawDay: WorkDay,
+    isDayDirty: Boolean,
+    jalaliYear: Int,''')
+s = s.replace('val day = applyCalendarHoliday(rawDay, db)', 'val day = if (isDayDirty) rawDay else applyCalendarHoliday(rawDay, db)')
+s = s.replace('''                            workRevision++
+                            day = if (date >= deletedFrom''', '''                            workRevision++
+                            dayDirty = false
+                            day = if (date >= deletedFrom''')
+
 main.write_text(s, encoding="utf-8")
 
 cal = root / "app/src/main/java/ir/karkard/app/JalaliCalendar.kt"
