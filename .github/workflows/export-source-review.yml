@@ -1,0 +1,27 @@
+name: Export source for review
+on:
+  push:
+    branches:
+      - work/v044-source-inspect
+permissions:
+  contents: read
+  actions: read
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Extract project archive
+        run: |
+          unzip -t Karkard_Android_Project.zip
+          mkdir project
+          unzip -q Karkard_Android_Project.zip -d project
+          zip -qr Karkard_Android_Source_Tree.zip project
+          echo "Archive file list:"
+          find project -maxdepth 4 -type f | head -250
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Karkard-Android-Source-Tree
+          path: Karkard_Android_Source_Tree.zip
+          if-no-files-found: error
+          retention-days: 2
