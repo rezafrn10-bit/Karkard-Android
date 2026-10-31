@@ -1,4 +1,4 @@
-name: Export source for review
+name: Build and export v0.44.0 for review
 on:
   push:
     branches:
@@ -7,21 +7,42 @@ permissions:
   contents: read
   actions: read
 jobs:
-  export:
+  export-and-build:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Extract project archive
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Extract and patch the current project ZIP
         run: |
           unzip -t Karkard_Android_Project.zip
           mkdir project
           unzip -q Karkard_Android_Project.zip -d project
-          zip -qr Karkard_Android_Source_Tree.zip project
-          echo "Archive file list:"
-          find project -maxdepth 4 -type f | head -250
+          curl -fL --retry 3 'https://raw.githubusercontent.com/Omaraldeek3/harf/main/public/fonts/laylathuluth/LaylaThuluth.ttf' -o /tmp/LaylaThuluth.ttf
+          curl -fL --retry 3 'https://raw.githubusercontent.com/Omaraldeek3/harf/main/public/fonts/laylathuluth/LICENSE.txt' -o /tmp/LaylaThuluth-LICENSE.txt
+          curl -fL --retry 3 'https://raw.githubusercontent.com/Omaraldeek3/harf/main/public/fonts/laylathuluth/UPSTREAM-NOTICES.txt' -o /tmp/LaylaThuluth-UPSTREAM-NOTICES.txt
+          python3 scripts/patch_v044.py
+          mkdir -p output
+          (cd project && zip -qr ../output/Karkard_Android_Project_v044.zip .)
+          unzip -t output/Karkard_Android_Project_v044.zip
+          echo "Version metadata:"
+          grep -nE 'versionCode|versionName' project/app/build.gradle.kts
+          echo "New font resource:"
+          ls -lh project/app/src/main/res/font/layla_thuluth.ttf
+      - name: Build debug APK
+        run: gradle -p project assembleDebug --no-daemon
       - uses: actions/upload-artifact@v7
         with:
-          name: Karkard-Android-Source-Tree
-          path: Karkard_Android_Source_Tree.zip
+          name: Karkard-Android-Project-v0.44.0
+          path: output/Karkard_Android_Project_v044.zip
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Karkard-Android-Debug-APK-v0.44.0
+          path: project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
