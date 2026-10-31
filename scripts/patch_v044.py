@@ -149,6 +149,10 @@ t = cal.read_text(encoding="utf-8")
 assert "رفتن به ثبت کارکرد این روز" in t
 cal.write_text(t.replace("رفتن به ثبت کارکرد این روز", "رفتن به این روز"), encoding="utf-8")
 
+strings = root / "app/src/main/res/values/strings.xml"
+strings_text = strings.read_text(encoding="utf-8")
+strings.write_text(strings_text.replace("<string name=" + chr(34) + "app_name" + chr(34) + ">مورخ</string>", "<string name=" + chr(34) + "app_name" + chr(34) + ">موَرِّخ</string>"), encoding="utf-8")
+
 gradle = root / "app/build.gradle.kts"
 g = gradle.read_text(encoding="utf-8")
 assert 'versionCode = 43' in g and 'versionName = "0.43.0"' in g
