@@ -30,7 +30,25 @@ jobs:
           unzip -tq Karkard_Android_Project.zip
           mkdir -p project
           unzip -q Karkard_Android_Project.zip -d project
-          test -f project/app/build.gradle.kts
+
+          # The ZIP may contain the project at its root or inside a versioned
+          # wrapper directory (for example, v052work/). Find the actual Gradle root.
+          mapfile -t gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
+          if [[ "${#gradle_files[@]}" -ne 1 ]]; then
+            echo "Expected exactly one app/build.gradle.kts in the archive; found ${#gradle_files[@]}." >&2
+            find project -maxdepth 5 -type f \( -name 'settings.gradle' -o -name 'settings.gradle.kts' -o -name 'build.gradle' -o -name 'build.gradle.kts' \) -print >&2
+            exit 1
+          fi
+
+          app_gradle="${gradle_files[0]}"
+          project_root="${app_gradle%/app/build.gradle.kts}"
+          if [[ ! -f "$project_root/settings.gradle" && ! -f "$project_root/settings.gradle.kts" ]]; then
+            echo "Found app/build.gradle.kts but no settings.gradle(.kts) beside it: $project_root" >&2
+            exit 1
+          fi
+
+          echo "Detected Gradle project root: $project_root"
+          echo "PROJECT_ROOT=$project_root" >> "$GITHUB_ENV"
 
       - name: Restore private signing key
         shell: bash
@@ -62,7 +80,7 @@ jobs:
           VAGHTNEGAR_KEY_PASSWORD: ${{ secrets.VAGHTNEGAR_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          cd project
+          cd "$GITHUB_WORKSPACE/$PROJECT_ROOT"
           gradle assembleRelease --no-daemon
           test -f app/build/outputs/apk/release/app-release.apk
 
@@ -70,10 +88,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="project/app/build/outputs/apk/release/app-release.apk"
+          APK="$PROJECT_ROOT/app/build/outputs/apk/release/app-release.apk"
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          # apksigner returns a nonzero exit status if verification actually fails.
-          # Do not grep its human-readable output: formatting varies by build-tools version.
+          test -n "$BUILD_TOOLS"
           "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK"
           echo "APK signature verification passed."
 
@@ -81,6 +98,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: VaghtNegarHoor-SIGNED-APK
-          path: project/app/build/outputs/apk/release/app-release.apk
+          path: project/**/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
