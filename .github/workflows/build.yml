@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'Karkard_Android_Project.zip'
+      - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
   pull_request:
     paths:
-      - 'Karkard_Android_Project.zip'
+      - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
 
 permissions:
@@ -28,6 +28,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          packages: 'platform-tools'
+
+      - name: Install compileSdk 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-37"
+          test -d "$ANDROID_HOME/platforms/android-37"
+
       - name: Set up pinned Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
@@ -38,10 +51,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f Karkard_Android_Project.zip
-          unzip -tq Karkard_Android_Project.zip
+          test -f Karkard_Android_Project_v0731.zip
+          unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
-          unzip -q Karkard_Android_Project.zip -d project
+          unzip -q Karkard_Android_Project_v0731.zip -d project
           mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
           if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
             echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
@@ -70,7 +83,7 @@ jobs:
       - name: Upload debug APK and unit-test reports
         uses: actions/upload-artifact@v7
         with:
-          name: VaghtNegar-v073-debug
+          name: VaghtNegar-v0731-debug
           path: |
             project/**/build/outputs/apk/debug/*.apk
             project/**/build/reports/tests/testDebugUnitTest/**
@@ -95,6 +108,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK and emulator tools
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          packages: 'platform-tools emulator'
+
+      - name: Install compileSdk 37
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-37"
+          test -d "$ANDROID_HOME/platforms/android-37"
+
       - name: Set up pinned Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
@@ -105,9 +131,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          unzip -tq Karkard_Android_Project.zip
+          unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
-          unzip -q Karkard_Android_Project.zip -d project
+          unzip -q Karkard_Android_Project_v0731.zip -d project
           mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
           if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
             echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
