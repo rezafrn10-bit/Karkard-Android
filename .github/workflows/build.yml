@@ -164,7 +164,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
           working-directory: ${{ github.workspace }}/${{ steps.project.outputs.project_root }}
           pre-emulator-launch-script: |
-            CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=2048M/' "$CONFIG"; else printf '\\ndisk.dataPartition.size=2048M\\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
+            CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=2048M/' "$CONFIG"; else printf '\ndisk.dataPartition.size=2048M\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
             pwd && (test -f settings.gradle.kts || test -f settings.gradle) && gradle --no-daemon --stacktrace connectedDebugAndroidTest
 
