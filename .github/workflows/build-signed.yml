@@ -19,6 +19,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: 15859902
+          packages: 'platform-tools'
+
+      - name: Install compileSdk 37 and release build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-37" "build-tools;36.0.0"
+          test -d "$ANDROID_HOME/platforms/android-37"
+          test -x "$ANDROID_HOME/build-tools/36.0.0/apksigner"
+
       - name: Set up pinned Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
@@ -28,10 +42,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f Karkard_Android_Project.zip
-          unzip -tq Karkard_Android_Project.zip
+          test -f Karkard_Android_Project_v0731.zip
+          unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
-          unzip -q Karkard_Android_Project.zip -d project
+          unzip -q Karkard_Android_Project_v0731.zip -d project
 
           # The ZIP may contain the project at its root or inside a versioned
           # wrapper directory (for example, v052work/). Find the actual Gradle root.
