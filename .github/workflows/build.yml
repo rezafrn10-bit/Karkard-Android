@@ -1,0 +1,139 @@
+name: Build and test VaghtNegar
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Karkard_Android_Project.zip'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'Karkard_Android_Project.zip'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Unit tests and debug APK
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up pinned Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+
+      - name: Validate archive and locate Gradle project
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f Karkard_Android_Project.zip
+          unzip -tq Karkard_Android_Project.zip
+          mkdir -p project
+          unzip -q Karkard_Android_Project.zip -d project
+          mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
+          if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
+            echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
+            find project -maxdepth 6 -type f -name 'settings.gradle*' -print >&2
+            exit 1
+          fi
+          project_root="${app_gradle_files[0]%/app/build.gradle.kts}"
+          if [[ ! -f "$project_root/settings.gradle.kts" && ! -f "$project_root/settings.gradle" ]]; then
+            echo "Gradle settings file not found beside $project_root/app." >&2
+            exit 1
+          fi
+          echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
+          echo "Detected project root: $project_root"
+
+      - name: Run unit tests and build debug APK
+        shell: bash
+        env:
+          PROJECT_ROOT: ${{ steps.project.outputs.project_root }}
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/$PROJECT_ROOT"
+          gradle --version
+          gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
+          test -f app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload debug APK and unit-test reports
+        uses: actions/upload-artifact@v7
+        with:
+          name: VaghtNegar-v073-debug
+          path: |
+            project/**/build/outputs/apk/debug/*.apk
+            project/**/build/reports/tests/testDebugUnitTest/**
+          if-no-files-found: error
+          retention-days: 30
+
+  android-device-tests:
+    name: Android API ${{ matrix.api-level }} instrumentation tests
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [29, 30, 34, 35, 36]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up pinned Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '9.4.1'
+
+      - name: Extract and locate Gradle project
+        id: project
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -tq Karkard_Android_Project.zip
+          mkdir -p project
+          unzip -q Karkard_Android_Project.zip -d project
+          mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
+          if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
+            echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
+            exit 1
+          fi
+          project_root="${app_gradle_files[0]%/app/build.gradle.kts}"
+          test -f "$project_root/settings.gradle.kts" -o -f "$project_root/settings.gradle"
+          echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
+
+      - name: Run instrumentation tests on Android ${{ matrix.api-level }}
+        uses: reactivecircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            cd "$GITHUB_WORKSPACE/${{ steps.project.outputs.project_root }}"
+            gradle --no-daemon --stacktrace connectedDebugAndroidTest
+
+      - name: Upload instrumentation-test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-test-reports-api-${{ matrix.api-level }}
+          path: project/**/build/reports/androidTests/**
+          if-no-files-found: ignore
+          retention-days: 14
