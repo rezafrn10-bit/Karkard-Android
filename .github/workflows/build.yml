@@ -99,6 +99,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix:
         api-level: [29, 30, 34, 35, 36]
     steps:
@@ -157,12 +158,15 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disk-size: 2048M
-          ram-size: 2048M
+          ram-size: 3072M
           heap-size: 512M
-          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
+          working-directory: ${{ github.workspace }}/${{ steps.project.outputs.project_root }}
+          pre-emulator-launch-script: |
+            CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=2048M/' "$CONFIG"; else printf '\\ndisk.dataPartition.size=2048M\\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
-            cd "$GITHUB_WORKSPACE/${{ steps.project.outputs.project_root }}"
-            gradle --no-daemon --stacktrace connectedDebugAndroidTest
+            pwd && (test -f settings.gradle.kts || test -f settings.gradle) && gradle --no-daemon --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumentation-test reports
         if: always()
