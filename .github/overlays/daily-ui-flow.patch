@@ -248,7 +248,11 @@ index 1290bb5..0eba92a 100644
  }
  
  @Composable
-@@ -3458,7 +3483,14 @@ fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fieldFontSize: Int = 17) {
+@@ -3458,7 +3483,14 @@ private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier) {
+ }
+ 
+ @Composable
+-fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fieldFontSize: Int = 17) {
 +fun SplitTimeField(
 +    label: String,
 +    value: String,
