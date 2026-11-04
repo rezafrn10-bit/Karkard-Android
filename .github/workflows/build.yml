@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 1
       matrix:
         api-level: [29, 30, 34, 35, 36]
     steps:
@@ -133,6 +133,17 @@ jobs:
         with:
           gradle-version: '9.4.1'
 
+      - name: Reclaim runner disk space for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Disk space before cleanup:"
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          sudo rm -rf "$ANDROID_HOME/ndk" "$ANDROID_HOME/cmake" "$ANDROID_HOME/sources"
+          echo "Disk space after cleanup:"
+          df -h /
+
       - name: Extract and locate Gradle project
         id: project
         shell: bash
@@ -157,14 +168,14 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          disk-size: 2048M
-          ram-size: 3072M
+          disk-size: 4096M
+          ram-size: 2048M
           heap-size: 512M
-          emulator-boot-timeout: 900
+          emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
           working-directory: ${{ github.workspace }}/${{ steps.project.outputs.project_root }}
           pre-emulator-launch-script: |
-            CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=2048M/' "$CONFIG"; else printf '\ndisk.dataPartition.size=2048M\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
+            CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=4096M/' "$CONFIG"; else printf '\ndisk.dataPartition.size=2048M\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
             pwd && (test -f settings.gradle.kts || test -f settings.gradle) && gradle --no-daemon --stacktrace connectedDebugAndroidTest
 
