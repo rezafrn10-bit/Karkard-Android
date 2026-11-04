@@ -12,10 +12,10 @@ index b8176b5..ad710a4 100644
 \ No newline at end of file
 diff --git a/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
 new file mode 100644
-index 0000000..bd8fd8f
+index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,137 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -25,7 +25,8 @@ index 0000000..bd8fd8f
 +import androidx.compose.ui.test.onNodeWithTag
 +import androidx.compose.ui.test.performClick
 +import androidx.compose.ui.test.performImeAction
-+import androidx.compose.ui.test.performScrollTo
++import androidx.compose.ui.test.hasTestTag
++import androidx.compose.ui.test.performScrollToNode
 +import androidx.compose.ui.test.performTextInput
 +import androidx.compose.ui.test.waitUntil
 +import androidx.test.core.app.ApplicationProvider
@@ -107,7 +108,9 @@ index 0000000..bd8fd8f
 +            composeRule.onNodeWithTag("daily-entry-out-hour").performClick().performTextInput("13")
 +            composeRule.onNodeWithTag("daily-entry-out-minute").performClick().performTextInput("20").performImeAction()
 +
-+            composeRule.onNodeWithTag("day-save-button").performScrollTo().performClick()
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("day-save-button"))
++            composeRule.onNodeWithTag("day-save-button").performClick()
 +
 +            composeRule.waitUntil(15_000) {
 +                val saved = readDb.getDay(todayKey)
@@ -151,7 +154,7 @@ index 0000000..bd8fd8f
 +    }
 +}
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
-index 1290bb5..c238f4f 100644
+index 1290bb5..0eba92a 100644
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 @@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
@@ -170,7 +173,17 @@ index 1290bb5..c238f4f 100644
                                  icon = {
                                      Icon(
                                          painter = painterResource(iconRes),
-@@ -2747,7 +2749,12 @@ private fun HomeDashboard(
+@@ -2511,7 +2513,8 @@ private fun HomeDashboard(
+     var confirmDayDeletion by remember(date) { mutableStateOf(false) }
+ 
+     LazyColumn(
+-        modifier = modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 5.dp),
++        modifier = modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 5.dp)
++            .testTag("daily-editor-list"),
+         verticalArrangement = Arrangement.spacedBy(6.dp),
+         contentPadding = PaddingValues(bottom = 8.dp)
+     ) {
+@@ -2747,7 +2750,12 @@ private fun HomeDashboard(
                              fontSize = 10.sp, color = Color(0xFF52708F), lineHeight = 14.sp
                          )
                          Divider(color = Color(0xFFC8DCD9))
@@ -184,7 +197,7 @@ index 1290bb5..c238f4f 100644
                          if (day.fixedHoursMode) {
                              Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                  OutlinedButton(
-@@ -2905,7 +2912,7 @@ private fun HomeDashboard(
+@@ -2905,7 +2913,7 @@ private fun HomeDashboard(
                          }
                      }
                  },
@@ -193,7 +206,7 @@ index 1290bb5..c238f4f 100644
                  contentPadding = PaddingValues(vertical = 5.dp)
              ) {
                  val openFixedEntry = hasOpenAttendanceEntry(day)
-@@ -3132,19 +3139,36 @@ private fun MetricDivider() {
+@@ -3132,19 +3140,36 @@ private fun MetricDivider() {
  }
  
  @Composable
@@ -235,11 +248,7 @@ index 1290bb5..c238f4f 100644
  }
  
  @Composable
-@@ -3458,7 +3482,14 @@ private fun SummaryMiniTile(label: String, value: String, background: Color, for
- }
- 
- @Composable
--fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fieldFontSize: Int = 17) {
+@@ -3458,7 +3483,14 @@ fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fieldFontSize: Int = 17) {
 +fun SplitTimeField(
 +    label: String,
 +    value: String,
@@ -251,7 +260,7 @@ index 1290bb5..c238f4f 100644
      // One controlled implementation for daily entry, hourly leave and work shifts.
      // Do not reset internal hour/minute state after every parent save/recomposition.
      val parts = value.toLatinDigits().split(":")
-@@ -3482,7 +3513,9 @@ fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, mod
+@@ -3482,7 +3514,9 @@ fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fieldFontSize: Int = 17) {
                          // A real edit reaches 2 digits; a mere tap/selection never calls this.
                          if (typedHour.length == 2) minuteFocus.requestFocus()
                      },
@@ -262,7 +271,7 @@ index 1290bb5..c238f4f 100644
                      maxDigits = 2,
                      fontSize = stableClockFontSize,
                      imeAction = ImeAction.Next
-@@ -3498,7 +3531,9 @@ fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, mod
+@@ -3498,7 +3532,9 @@ fun SplitTimeField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier, fieldFontSize: Int = 17) {
                      onValueChange = { typedMinute ->
                          onChange(if (hour.isBlank() && typedMinute.isBlank()) "" else "$hour:$typedMinute")
                      },
@@ -273,7 +282,7 @@ index 1290bb5..c238f4f 100644
                      maxDigits = 2,
                      fontSize = stableClockFontSize,
                      imeAction = ImeAction.Done
-@@ -3988,6 +4023,7 @@ fun ReportScreen(
+@@ -3988,6 +4024,7 @@ fun ReportScreen(
                          shiftDuration = periodSessionMinutes(shiftsForDay),
                          hasShift = shiftsForDay.isNotEmpty(),
                          activityCount = shiftsForDay.size,
