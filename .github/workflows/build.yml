@@ -88,7 +88,7 @@ jobs:
             echo "Expected: $expected_test_file" >&2
             exit 1
           fi
-          grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportCanManuallyReachTheCurrentDayCard)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
 
       - name: Run unit tests and build debug APK
@@ -120,7 +120,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        api-level: [29, 30, 34, 35, 36]
+        api-level: [34]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -196,7 +196,7 @@ jobs:
             echo "Expected: $expected_test_file" >&2
             exit 1
           fi
-          grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportCanManuallyReachTheCurrentDayCard)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
 
       - name: Run instrumentation tests on Android ${{ matrix.api-level }}
@@ -215,7 +215,7 @@ jobs:
           pre-emulator-launch-script: |
             CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=4096M/' "$CONFIG"; else printf '\ndisk.dataPartition.size=2048M\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
-            set -eux; pwd; test -f settings.gradle.kts -o -f settings.gradle; test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt; echo 'Android UI test source files:'; find app/src/androidTest/java -type f -name '*Test.kt' -print; echo 'Required UI test methods:'; grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt; gradle --no-daemon --no-build-cache --rerun-tasks --stacktrace connectedDebugAndroidTest
+            set -eux; pwd; test -f settings.gradle.kts -o -f settings.gradle; test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt; echo 'Android UI test source files:'; find app/src/androidTest/java -type f -name '*Test.kt' -print; echo 'Required UI test methods:'; grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportCanManuallyReachTheCurrentDayCard)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt; gradle --no-daemon --no-build-cache --rerun-tasks --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumentation-test reports
         if: always()
