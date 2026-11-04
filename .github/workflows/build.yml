@@ -60,11 +60,10 @@ jobs:
           unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
           unzip -q Karkard_Android_Project_v0731.zip -d project
-          (cd project && git apply "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
           if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
             echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
-            find project -maxdepth 6 -type f -name 'settings.gradle*' -print >&2
+            find project -maxdepth 7 -type f -name 'settings.gradle*' -print >&2
             exit 1
           fi
           project_root="${app_gradle_files[0]%/app/build.gradle.kts}"
@@ -72,8 +71,13 @@ jobs:
             echo "Gradle settings file not found beside $project_root/app." >&2
             exit 1
           fi
+          echo "Detected Gradle project root: $project_root"
+          echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
+          (cd "$project_root" && git apply --check -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd "$project_root" && git apply -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          test -f "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
-          echo "Detected project root: $project_root"
 
       - name: Run unit tests and build debug APK
         shell: bash
@@ -155,14 +159,20 @@ jobs:
           unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
           unzip -q Karkard_Android_Project_v0731.zip -d project
-          (cd project && git apply "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
           if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
             echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
+            find project -maxdepth 7 -type f -name 'settings.gradle*' -print >&2
             exit 1
           fi
           project_root="${app_gradle_files[0]%/app/build.gradle.kts}"
           test -f "$project_root/settings.gradle.kts" -o -f "$project_root/settings.gradle"
+          echo "Detected Gradle project root: $project_root"
+          echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
+          (cd "$project_root" && git apply --check -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd "$project_root" && git apply -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          test -f "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
 
       - name: Run instrumentation tests on Android ${{ matrix.api-level }}
@@ -181,7 +191,7 @@ jobs:
           pre-emulator-launch-script: |
             CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=4096M/' "$CONFIG"; else printf '\ndisk.dataPartition.size=2048M\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
-            pwd && (test -f settings.gradle.kts || test -f settings.gradle) && test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt && grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt && gradle --no-daemon --no-build-cache --rerun-tasks --stacktrace connectedDebugAndroidTest
+            set -eux; pwd; test -f settings.gradle.kts -o -f settings.gradle; test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt; echo 'Android UI test source files:'; find app/src/androidTest/java -type f -name '*Test.kt' -print; echo 'Required UI test methods:'; grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt; gradle --no-daemon --no-build-cache --rerun-tasks --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumentation-test reports
         if: always()
