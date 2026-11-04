@@ -73,9 +73,20 @@ jobs:
           fi
           echo "Detected Gradle project root: $project_root"
           echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
-          (cd "$project_root" && git apply --check -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
-          (cd "$project_root" && git apply -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
-          test -f "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          (cd project && git apply --check "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd project && git apply --verbose "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          test_file="$(find project -type f -name 'DailyUiFlowInstrumentedTest.kt' -print -quit)"
+          expected_test_file="$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          if [[ -z "$test_file" ]]; then
+            echo "UI instrumentation source was not created by the overlay." >&2
+            find project -type f -path '*/app/src/androidTest/*' -print >&2
+            exit 1
+          fi
+          if [[ "$test_file" != "$expected_test_file" ]]; then
+            echo "UI instrumentation source was created at unexpected path: $test_file" >&2
+            echo "Expected: $expected_test_file" >&2
+            exit 1
+          fi
           grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
 
@@ -169,9 +180,20 @@ jobs:
           test -f "$project_root/settings.gradle.kts" -o -f "$project_root/settings.gradle"
           echo "Detected Gradle project root: $project_root"
           echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
-          (cd "$project_root" && git apply --check -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
-          (cd "$project_root" && git apply -p2 "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
-          test -f "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          (cd project && git apply --check "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd project && git apply --verbose "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          test_file="$(find project -type f -name 'DailyUiFlowInstrumentedTest.kt' -print -quit)"
+          expected_test_file="$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
+          if [[ -z "$test_file" ]]; then
+            echo "UI instrumentation source was not created by the overlay." >&2
+            find project -type f -path '*/app/src/androidTest/*' -print >&2
+            exit 1
+          fi
+          if [[ "$test_file" != "$expected_test_file" ]]; then
+            echo "UI instrumentation source was created at unexpected path: $test_file" >&2
+            echo "Expected: $expected_test_file" >&2
+            exit 1
+          fi
           grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
 
