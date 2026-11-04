@@ -181,7 +181,7 @@ jobs:
           pre-emulator-launch-script: |
             CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"; if grep -q '^disk.dataPartition.size=' "$CONFIG"; then sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=4096M/' "$CONFIG"; else printf '\ndisk.dataPartition.size=2048M\n' >> "$CONFIG"; fi; grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
-            pwd && (test -f settings.gradle.kts || test -f settings.gradle) && gradle --no-daemon --stacktrace connectedDebugAndroidTest
+            pwd && (test -f settings.gradle.kts || test -f settings.gradle) && test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt && grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportAutomaticallyScrollsTheCurrentDayCardIntoView)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt && gradle --no-daemon --no-build-cache --rerun-tasks --stacktrace connectedDebugAndroidTest
 
       - name: Upload instrumentation-test reports
         if: always()
