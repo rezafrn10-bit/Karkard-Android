@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,150 @@
+@@ -0,0 +1,166 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -68,7 +68,21 @@ index 0000000..0aeda6d
 +            hadOriginalDay = cleanupDb.hasWorkDay(todayKey)
 +            originalDay = cleanupDb.getDay(todayKey)
 +            originalHolidayReason = cleanupDb.holidayTitle(todayKey)
-+            cleanupDb.deleteDay(todayKey)
++            val baseline = originalDay ?: WorkDay(todayKey)
++            val emptyTestDay = baseline.copy(
++                date = todayKey,
++                in1 = "", out1 = "", in2 = "", out2 = "",
++                in3 = "", out3 = "", in4 = "", out4 = "",
++                holidayIn = "", holidayOut = "",
++                leave1Start = "", leave1End = "", leave2Start = "", leave2End = "",
++                leave3Start = "", leave3End = "", leave4Start = "", leave4End = "",
++                hourlyLeaveEnabled = false, overtimeOverride = "",
++                shiftEnabled = false, shiftStart = "", shiftEnd = "",
++                shiftStartDate = "", shiftEndDate = ""
++            )
++            // Do not call deleteDay(): it also deletes independent work sessions and
++            // related multi-day shift data. Only replace this one workday row temporarily.
++            cleanupDb.saveDayAndHoliday(emptyTestDay, originalHolidayReason)
 +        } finally {
 +            cleanupDb.close()
 +        }
@@ -97,8 +111,10 @@ index 0000000..0aeda6d
 +            if (hadOriginalDay) {
 +                cleanupDb.saveDayAndHoliday(checkNotNull(originalDay), originalHolidayReason)
 +            } else {
-+                cleanupDb.deleteDay(todayKey)
-+                originalHolidayReason?.let { cleanupDb.saveHoliday(todayKey, it) }
++                // Remove only the temporary workday row; keep work sessions and shifts.
++                cleanupDb.writableDatabase.delete("workdays", "date=?", arrayOf(todayKey))
++                if (originalHolidayReason == null) cleanupDb.removeHoliday(todayKey)
++                else cleanupDb.saveHoliday(todayKey, originalHolidayReason!!)
 +            }
 +        } finally {
 +            cleanupDb.close()
