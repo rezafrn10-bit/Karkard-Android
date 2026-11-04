@@ -6,10 +6,12 @@ on:
     paths:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
+      - '.github/overlays/daily-ui-flow.patch'
   pull_request:
     paths:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
+      - '.github/overlays/daily-ui-flow.patch'
 
 permissions:
   contents: read
@@ -58,6 +60,7 @@ jobs:
           unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
           unzip -q Karkard_Android_Project_v0731.zip -d project
+          (cd project && git apply "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
           if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
             echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
@@ -152,6 +155,7 @@ jobs:
           unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
           unzip -q Karkard_Android_Project_v0731.zip -d project
+          (cd project && git apply "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           mapfile -t app_gradle_files < <(find project -type f -path '*/app/build.gradle.kts' -print)
           if [[ "${#app_gradle_files[@]}" -ne 1 ]]; then
             echo "Expected exactly one app/build.gradle.kts; found ${#app_gradle_files[@]}." >&2
