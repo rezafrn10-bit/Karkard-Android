@@ -16,13 +16,13 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,162 @@
+@@ -0,0 +1,163 @@
 +package ir.karkard.app
 +
 +import android.content.Context
 +import androidx.compose.ui.test.assertIsDisplayed
 +import androidx.compose.ui.test.assertTextEquals
-+import androidx.compose.ui.test.junit4.createAndroidComposeRule
++import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 +import androidx.compose.ui.test.onNodeWithTag
 +import androidx.compose.ui.test.performClick
 +import androidx.compose.ui.test.performImeAction
@@ -149,6 +149,7 @@ index 0000000..0aeda6d
 +
 +            // Home is removed from composition while the monthly report is shown.
 +            // Returning to Home must reload the committed row, not a stale editor copy.
++            composeRule.waitForIdle()
 +            composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +            composeRule.onNodeWithTag("navigation-home").performClick()
 +
