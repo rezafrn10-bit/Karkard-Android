@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,137 @@
+@@ -0,0 +1,150 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -51,6 +51,9 @@ index 0000000..0aeda6d
 +
 +    private lateinit var context: Context
 +    private lateinit var todayKey: String
++    private var hadOriginalDay = false
++    private var originalDay: WorkDay? = null
++    private var originalHolidayReason: String? = null
 +
 +    @Before
 +    fun startFromAnEmptyCurrentDay() {
@@ -60,6 +63,11 @@ index 0000000..0aeda6d
 +
 +        val cleanupDb = WorkDb(context)
 +        try {
++            // Keep the user's current-day data intact if this test is ever run on a
++            // developer device instead of the disposable CI emulator.
++            hadOriginalDay = cleanupDb.hasWorkDay(todayKey)
++            originalDay = cleanupDb.getDay(todayKey)
++            originalHolidayReason = cleanupDb.holidayTitle(todayKey)
 +            cleanupDb.deleteDay(todayKey)
 +        } finally {
 +            cleanupDb.close()
@@ -86,7 +94,12 @@ index 0000000..0aeda6d
 +        if (!::context.isInitialized || !::todayKey.isInitialized) return
 +        val cleanupDb = WorkDb(context)
 +        try {
-+            cleanupDb.deleteDay(todayKey)
++            if (hadOriginalDay) {
++                cleanupDb.saveDayAndHoliday(checkNotNull(originalDay), originalHolidayReason)
++            } else {
++                cleanupDb.deleteDay(todayKey)
++                originalHolidayReason?.let { cleanupDb.saveHoliday(todayKey, it) }
++            }
 +        } finally {
 +            cleanupDb.close()
 +        }
