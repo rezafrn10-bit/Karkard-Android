@@ -73,8 +73,9 @@ jobs:
           fi
           echo "Detected Gradle project root: $project_root"
           echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
-          (cd project && git apply --check "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
-          (cd project && git apply --verbose "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          command -v patch
+          (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           test_file="$(find project -type f -name 'DailyUiFlowInstrumentedTest.kt' -print -quit)"
           expected_test_file="$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           if [[ -z "$test_file" ]]; then
@@ -180,8 +181,9 @@ jobs:
           test -f "$project_root/settings.gradle.kts" -o -f "$project_root/settings.gradle"
           echo "Detected Gradle project root: $project_root"
           echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
-          (cd project && git apply --check "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
-          (cd project && git apply --verbose "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          command -v patch
+          (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           test_file="$(find project -type f -name 'DailyUiFlowInstrumentedTest.kt' -print -quit)"
           expected_test_file="$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           if [[ -z "$test_file" ]]; then
