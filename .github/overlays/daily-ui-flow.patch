@@ -324,14 +324,7 @@ index 1290bb5..0eba92a 100644
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
-@@ -203,7 +203,6 @@
- // Monthly report items before the first day card: period picker, summary, tourahi,
- // export controls, and the "کارت روز" section header.
--private const val MONTHLY_REPORT_DAY_LIST_START_INDEX = 5
- 
- private val workHolidayStatuses = setOf("تعطیل رسمی", "تعطیل خاص")
- private val workLeaveStatuses = setOf("استحقاقی", "استعلاجی")
-@@ -73,7 +72,6 @@
+@@ -72,7 +72,6 @@
  import kotlinx.coroutines.Dispatchers
  import kotlinx.coroutines.launch
  import kotlinx.coroutines.withContext
@@ -339,16 +332,23 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
  
  
  private tailrec fun Context.findComponentActivity(): ComponentActivity? = when (this) {
+@@ -203,7 +202,6 @@
+ 
+ // Monthly report items before the first day card: period picker, summary, tourahi,
+ // export controls, and the "کارت روز" section header.
+-private const val MONTHLY_REPORT_DAY_LIST_START_INDEX = 5
+ 
+ private val workHolidayStatuses = setOf("تعطیل رسمی", "تعطیل خاص")
+ private val workLeaveStatuses = setOf("استحقاقی", "استعلاجی")
 @@ -3739,7 +3737,6 @@
-     BackHandler(enabled = selectionMode && !showDeleteConfirmation) {
          selectionMode = false
          selectedCardIds = emptySet()
      }
 -    val reportListState = androidx.compose.foundation.lazy.rememberLazyListState()
      // Resolve the device date on every recomposition; the report may stay open over midnight.
      val todayJalali = jalaliDateString(LocalDate.now())
-@@ -3808,22 +3805,8 @@
-     }
+     val monthKey = "%04d-%02d".format(year, monthNumber)
+@@ -3808,25 +3805,9 @@
      val entitledCount = (rawEntitledCount - effectiveDeductionTotal).coerceAtLeast(0)
      val tourahiCount = savedDeductionTotal
  
