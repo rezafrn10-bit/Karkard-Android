@@ -7,6 +7,7 @@ on:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
       - '.github/overlays/daily-ui-flow.patch'
+      - '.github/scripts/run-android-instrumentation.sh'
   pull_request:
     paths:
       - 'Karkard_Android_Project_v0731.zip'
@@ -206,8 +207,9 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disk-size: 4096M
-          ram-size: 2048M
-          heap-size: 512M
+          # Give the API 34 system image more headroom; keep Gradle worker count bounded in the test script.
+          ram-size: 3072M
+          heap-size: 768M
           emulator-boot-timeout: 1200
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
