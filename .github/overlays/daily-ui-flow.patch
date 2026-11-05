@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,172 @@
+@@ -0,0 +1,176 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -57,6 +57,24 @@ index 0000000..0aeda6d
 +    private var originalDay: WorkDay? = null
 +    private var originalHolidayReason: String? = null
 +
++    /** The time-entry row is below the initial viewport of the Home LazyColumn. */
++    private fun scrollToDailyTimeEntry() {
++        composeRule.waitUntil(15_000) {
++            runCatching {
++                composeRule.onNodeWithTag("daily-editor-list").assertIsDisplayed()
++            }.isSuccess
++        }
++        try {
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("daily-entry-in-hour"))
++            composeRule.onNodeWithTag("daily-entry-in-hour").assertIsDisplayed()
++        } catch (failure: Throwable) {
++            println("DailyUiFlow setup: could not reveal daily time-entry row; todayKey=$todayKey")
++            composeRule.onRoot(useUnmergedTree = true).printToLog("DailyUiFlowInitialTree")
++            throw failure
++        }
++    }
++
 +    @Before
 +    fun startFromAnEmptyCurrentDay() {
 +        context = ApplicationProvider.getApplicationContext()
@@ -89,27 +107,13 @@ index 0000000..0aeda6d
 +            cleanupDb.close()
 +        }
 +
-+        // Wait for the splash screen to finish and ensure the Home editor reloads
-+        // the just-cleared SQLite row instead of retaining a previous composition.
-+        val initialHomeReady = runCatching {
-+            composeRule.waitUntil(15_000) {
-+                runCatching {
-+                    composeRule.onNodeWithTag("daily-entry-in-hour").assertIsDisplayed()
-+                }.isSuccess
-+            }
-+        }
-+        if (initialHomeReady.isFailure) {
-+            println("DailyUiFlow setup: todayKey=$todayKey; dumping initial Compose semantics tree")
-+            composeRule.onRoot(useUnmergedTree = true).printToLog("DailyUiFlowInitialTree")
-+            throw AssertionError("Daily entry field did not appear during test setup", initialHomeReady.exceptionOrNull())
-+        }
++        // The entry row lives below the initial viewport in this LazyColumn.
++        // Scroll to it before asserting visibility; waiting alone cannot compose an off-screen item.
++        scrollToDailyTimeEntry()
 +        composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +        composeRule.onNodeWithTag("navigation-home").performClick()
-+        composeRule.waitUntil(10_000) {
-+            runCatching {
-+                composeRule.onNodeWithTag("daily-entry-in-hour").assertIsDisplayed()
-+            }.isSuccess
-+        }
++        // HomeDashboard is recreated at the top after leaving the screen.
++        scrollToDailyTimeEntry()
 +    }
 +
 +    @After
