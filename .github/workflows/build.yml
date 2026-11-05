@@ -213,55 +213,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
           working-directory: ${{ github.workspace }}/${{ steps.project.outputs.project_root }}
-          pre-emulator-launch-script: |
-            set -euo pipefail
-            CONFIG="$ANDROID_AVD_HOME/test.avd/config.ini"
-            test -f "$CONFIG"
-            if grep -q '^disk.dataPartition.size=' "$CONFIG"; then
-              sed -i 's/^disk.dataPartition.size=.*/disk.dataPartition.size=4096M/' "$CONFIG"
-            else
-              printf '\ndisk.dataPartition.size=4096M\n' >> "$CONFIG"
-            fi
-            grep '^disk.dataPartition.size=' "$CONFIG"
-          script: |
-            set -eu
-            pwd
-            test -f settings.gradle.kts -o -f settings.gradle
-            test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-            echo 'Android UI test source files:'
-            find app/src/androidTest/java -type f -name '*Test.kt' -print
-            echo 'Required UI test methods:'
-            grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportCanManuallyReachTheCurrentDayCard)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-            echo 'Checking emulator API level and Android system services...'
-            if ! api_level="$(timeout 20s adb shell getprop ro.build.version.sdk | tr -d '\r')"; then
-              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
-              echo 'Emulator shell did not respond while reading Android API level.' >&2
-              exit 1
-            fi
-            echo "Detected Android API level: $api_level"
-            if [ "$api_level" != "${{ matrix.api-level }}" ]; then
-              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
-              echo "Expected Android API ${{ matrix.api-level }}, received $api_level." >&2
-              exit 1
-            fi
-            if ! timeout 20s adb shell cmd package path android; then
-              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
-              echo 'Android PackageManager service is not responding.' >&2
-              exit 1
-            fi
-            if ! timeout 20s adb shell am get-current-user; then
-              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
-              echo 'Android ActivityManager service is not responding.' >&2
-              exit 1
-            fi
-            echo 'Emulator preflight passed; starting instrumentation tests.'
-            if gradle --no-daemon --no-build-cache --rerun-tasks --stacktrace connectedDebugAndroidTest; then
-              test_exit=0
-            else
-              test_exit=$?
-            fi
-            adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
-            exit "$test_exit"
+          script: bash "$GITHUB_WORKSPACE/.github/scripts/run-android-instrumentation.sh"
 
       - name: Upload instrumentation-test reports
         if: always()
