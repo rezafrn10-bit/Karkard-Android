@@ -425,15 +425,22 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/Calen
          else -> "کاری"
      }
 
-diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
---- a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
-+++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
-@@ -172,4 +172,31 @@ class CalendarWorkdayPolicyTest {
-         assertTrue(isHolidayWorkDay(WorkDay(date = "1405-02-12", dayType = "تعطیل رسمی")))
-         assertTrue(isHolidayWorkDay(WorkDay(date = "1405-02-12", dayType = "تعطیل خاص")))
-     }
- 
-+    @Test fun officialEidAlAdha1405CannotBeDowngradedToSpecialOrWorkingDay() {
+diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt
+@@ -0,0 +1,42 @@
++package ir.karkard.app
++
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class CalendarWorkdayPolicyRegressionTest {
++    @Test
++    fun officialEidAlAdha1405CannotBeDowngradedToSpecialOrWorkingDay() {
 +        val eid = Calendar1405.holidays.single { it.first == "1405-03-06" }
 +        assertEquals("عید سعید قربان", eid.second)
 +        val manuallySpecial = WorkDay(
@@ -454,11 +461,11 @@ diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/Calen
 +        assertTrue(isCalendarDefaultHoliday(resolved, isFriday = false, isOfficialHoliday = true))
 +    }
 +
-+    @Test fun manuallySelectedSpecialHolidaySurvivesRefreshOnAnOrdinaryDate() {
++    @Test
++    fun manuallySelectedSpecialHolidaySurvivesRefreshOnAnOrdinaryDate() {
 +        val special = WorkDay(date = "1405-02-12", dayType = "تعطیل خاص", dayTypeManual = true)
 +        val resolved = resolveCalendarWorkdayStatus(special, true, false, false)
 +        assertEquals("تعطیل خاص", resolved.dayType)
 +        assertTrue(resolved.dayTypeManual)
 +    }
-+
- }
++}
