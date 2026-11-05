@@ -224,7 +224,7 @@ jobs:
             fi
             grep '^disk.dataPartition.size=' "$CONFIG"
           script: |
-            set -euo pipefail
+            set -eu
             pwd
             test -f settings.gradle.kts -o -f settings.gradle
             test -f app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
