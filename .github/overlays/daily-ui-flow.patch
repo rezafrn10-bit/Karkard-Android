@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,219 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -197,6 +197,14 @@ index 0000000..0aeda6d
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 9: before report navigation")
 +            composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 10: report opened")
++            composeRule.waitUntil(15_000) {
++                runCatching {
++                    composeRule.onNodeWithTag("summary-worked-value").assertTextEquals("۰۹:۱۰")
++                }.isSuccess
++            }
++            composeRule.onNodeWithTag("monthly-report-list")
++                .performScrollToNode(hasTestTag("monthly-current-day-card"))
++            composeRule.onNodeWithTag("monthly-day-worked-value").assertTextEquals("۰۹:۱۰")
 +            composeRule.onNodeWithTag("navigation-home").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 11: home reopened")
 +            // Returning from the report recreates HomeDashboard at the top of its LazyColumn.
