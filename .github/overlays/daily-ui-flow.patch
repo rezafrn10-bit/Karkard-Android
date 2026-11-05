@@ -407,3 +407,58 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
          verticalArrangement = Arrangement.spacedBy(8.dp),
          contentPadding = PaddingValues(bottom = 14.dp)
      ) {
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
+@@ -16,10 +16,10 @@ internal fun resolveCalendarWorkdayStatus(
+ ): WorkDay {
+     val calendarHoliday = isFriday || isOfficialHoliday
+     val resolvedType = when {
+-        // An explicitly declared exceptional closure is a user-owned override.
+-        hasManualDayType && current.dayType == "تعطیل خاص" -> "تعطیل خاص"
+         // Official dates are immutable: even a legacy/manual "کاری" value cannot turn them into workdays.
+         calendarHoliday -> "تعطیل رسمی"
++        // Preserve an explicitly selected special closure on ordinary calendar days.
++        hasManualDayType && current.dayType == "تعطیل خاص" -> "تعطیل خاص"
+         hasManualDayType -> current.dayType
+         else -> "کاری"
+     }
+
+diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
+--- a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
++++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
+@@ -172,4 +172,31 @@ class CalendarWorkdayPolicyTest {
+         assertTrue(isHolidayWorkDay(WorkDay(date = "1405-02-12", dayType = "تعطیل رسمی")))
+         assertTrue(isHolidayWorkDay(WorkDay(date = "1405-02-12", dayType = "تعطیل خاص")))
+     }
+ 
++    @Test fun officialEidAlAdha1405CannotBeDowngradedToSpecialOrWorkingDay() {
++        val eid = Calendar1405.holidays.single { it.first == "1405-03-06" }
++        assertEquals("عید سعید قربان", eid.second)
++        val manuallySpecial = WorkDay(
++            date = eid.first,
++            dayType = "تعطیل خاص",
++            dayTypeManual = true,
++            attendanceStatus = "عادی"
++        )
++        val resolved = resolveCalendarWorkdayStatus(
++            current = manuallySpecial,
++            hasManualDayType = true,
++            isFriday = false,
++            isOfficialHoliday = true
++        )
++        assertEquals("تعطیل رسمی", resolved.dayType)
++        assertFalse(resolved.dayTypeManual)
++        assertEquals("", resolved.attendanceStatus)
++        assertTrue(isCalendarDefaultHoliday(resolved, isFriday = false, isOfficialHoliday = true))
++    }
++
++    @Test fun manuallySelectedSpecialHolidaySurvivesRefreshOnAnOrdinaryDate() {
++        val special = WorkDay(date = "1405-02-12", dayType = "تعطیل خاص", dayTypeManual = true)
++        val resolved = resolveCalendarWorkdayStatus(special, true, false, false)
++        assertEquals("تعطیل خاص", resolved.dayType)
++        assertTrue(resolved.dayTypeManual)
++    }
++
+ }
