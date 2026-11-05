@@ -430,7 +430,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,38 @@
 +package ir.karkard.app
 +
 +import org.junit.Assert.assertEquals
