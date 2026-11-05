@@ -25,6 +25,7 @@ index 0000000..0aeda6d
 +import androidx.compose.ui.test.assertTextEquals
 +import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 +import androidx.compose.ui.test.onNodeWithTag
++import androidx.compose.ui.test.onAllNodesWithTag
 +import androidx.compose.ui.test.onRoot
 +import androidx.compose.ui.test.printToLog
 +import androidx.compose.ui.test.performClick
@@ -60,17 +61,18 @@ index 0000000..0aeda6d
 +
 +    /** The time-entry row is below the initial viewport of the Home LazyColumn. */
 +    private fun scrollToDailyTimeEntry() {
-+        composeRule.waitUntil(15_000) {
-+            runCatching {
-+                composeRule.onNodeWithTag("daily-editor-list").assertIsDisplayed()
-+            }.isSuccess
-+        }
 +        try {
++            // Wait for the Home dashboard tag itself, not assertIsDisplayed() on a
++            // potentially off-screen or not-yet-composed LazyColumn.
++            composeRule.waitUntil(30_000) {
++                composeRule.onAllNodesWithTag("daily-editor-list")
++                    .fetchSemanticsNodes().isNotEmpty()
++            }
 +            composeRule.onNodeWithTag("daily-editor-list")
 +                .performScrollToNode(hasTestTag("daily-entry-in-hour"))
 +            composeRule.onNodeWithTag("daily-entry-in-hour").assertIsDisplayed()
 +        } catch (failure: Throwable) {
-+            println("DailyUiFlow setup: could not reveal daily time-entry row; todayKey=$todayKey")
++            println("DailyUiFlow setup: Home dashboard/time row unavailable; todayKey=$todayKey; failure=${failure.message}")
 +            composeRule.onRoot(useUnmergedTree = true).printToLog("DailyUiFlowInitialTree")
 +            throw failure
 +        }
