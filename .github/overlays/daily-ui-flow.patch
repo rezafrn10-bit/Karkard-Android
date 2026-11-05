@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,219 @@
+@@ -0,0 +1,220 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -190,7 +190,7 @@ index 0000000..0aeda6d
 +            composeRule.onNodeWithTag("daily-editor-list")
 +                .performScrollToNode(hasTestTag("daily-worked-value"))
 +            composeRule.onNodeWithTag("daily-worked-value").assertTextEquals("۰۹:۱۰")
-
++
 +            // Home is removed from composition while the monthly report is shown.
 +            // Returning to Home must reload the committed row, not a stale editor copy.
 +            composeRule.waitForIdle()
@@ -246,7 +246,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 @@ -2926,1 +2926,1 @@
 -                    SummaryMiniTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF075565), Modifier.weight(1f))
 +                    SummaryMiniTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF075565), Modifier.weight(1f), testTag = "daily-worked-value")
-@@ -3445,5 +3445,5 @@
+@@ -3445,6 +3445,6 @@
 -private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier) {
 +private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier, testTag: String? = null) {
      Card(modifier = modifier.border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(10.dp)), colors = CardDefaults.cardColors(containerColor = background), shape = RoundedCornerShape(10.dp)) {
@@ -268,7 +268,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 @@ -4311,1 +4311,1 @@
 -                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f))
 +                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f), testTag = "monthly-day-worked-value")
-@@ -4347,7 +4347,7 @@
+@@ -4347,6 +4347,6 @@
 -private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier) {
 +private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier, testTag: String? = null) {
      Column(modifier = modifier.background(background, RoundedCornerShape(9.dp))
