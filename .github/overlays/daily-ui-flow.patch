@@ -20,6 +20,7 @@ index 0000000..0aeda6d
 +package ir.karkard.app
 +
 +import android.content.Context
++import android.util.Log
 +import androidx.compose.ui.test.assertIsDisplayed
 +import androidx.compose.ui.test.assertTextEquals
 +import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -145,26 +146,37 @@ index 0000000..0aeda6d
 +                managementDayForDate(readDb, todayKey).dayType == "کاری"
 +            )
 +
++            Log.i("DailyUiFlowTest", "CHECKPOINT 1: before in-hour input")
 +            composeRule.onNodeWithTag("daily-entry-in-hour").performClick().performTextInput("07")
++            Log.i("DailyUiFlowTest", "CHECKPOINT 2: after in-hour input")
 +            composeRule.onNodeWithTag("daily-entry-in-minute").performClick().performTextInput("10")
 +            composeRule.onNodeWithTag("daily-entry-out-hour").performClick().performTextInput("13")
 +            composeRule.onNodeWithTag("daily-entry-out-minute").performClick().performTextInput("20")
++            Log.i("DailyUiFlowTest", "CHECKPOINT 3: before IME action")
 +            composeRule.onNodeWithTag("daily-entry-out-minute").performImeAction()
++            Log.i("DailyUiFlowTest", "CHECKPOINT 4: after IME action")
 +
 +            composeRule.onNodeWithTag("daily-editor-list")
 +                .performScrollToNode(hasTestTag("day-save-button"))
++            Log.i("DailyUiFlowTest", "CHECKPOINT 5: before save click")
 +            composeRule.onNodeWithTag("day-save-button").performClick()
++            Log.i("DailyUiFlowTest", "CHECKPOINT 6: after save click")
 +
++            Log.i("DailyUiFlowTest", "CHECKPOINT 7: waiting for DB persistence")
 +            composeRule.waitUntil(15_000) {
 +                val saved = readDb.getDay(todayKey)
 +                saved.in1 == "07:10" && saved.out1 == "13:20"
 +            }
 +
++            Log.i("DailyUiFlowTest", "CHECKPOINT 8: DB persistence confirmed")
 +            // Home is removed from composition while the monthly report is shown.
 +            // Returning to Home must reload the committed row, not a stale editor copy.
 +            composeRule.waitForIdle()
++            Log.i("DailyUiFlowTest", "CHECKPOINT 9: before report navigation")
 +            composeRule.onNodeWithTag("navigation-report-monthly").performClick()
++            Log.i("DailyUiFlowTest", "CHECKPOINT 10: report opened")
 +            composeRule.onNodeWithTag("navigation-home").performClick()
++            Log.i("DailyUiFlowTest", "CHECKPOINT 11: home reopened")
 +            // Returning from the report recreates HomeDashboard at the top of its LazyColumn.
 +            scrollToDailyTimeEntry()
 +
