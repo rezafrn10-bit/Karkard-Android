@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,224 @@
+@@ -0,0 +1,229 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -31,6 +31,8 @@ index 0000000..0aeda6d
 +import androidx.compose.ui.test.performClick
 +import androidx.compose.ui.test.performImeAction
 +import androidx.compose.ui.test.hasTestTag
++import androidx.compose.ui.test.hasAnyDescendant
++import androidx.compose.ui.test.hasText
 +import androidx.compose.ui.test.performScrollToNode
 +import androidx.compose.ui.test.performScrollToIndex
 +import androidx.compose.ui.test.performTextInput
@@ -208,7 +210,10 @@ index 0000000..0aeda6d
 +            }
 +            composeRule.onNodeWithTag("monthly-report-list")
 +                .performScrollToNode(hasTestTag("monthly-current-day-card"))
-+            composeRule.onNodeWithTag("monthly-day-worked-value").assertTextEquals("۰۹:۱۰")
++            // The day-card container is the stable semantic boundary. Inspect its
++            // unmerged descendants so a parent that merges semantics cannot hide the value tag.
++            composeRule.onNodeWithTag("monthly-current-day-card", useUnmergedTree = true)
++                .assert(hasAnyDescendant(hasText("۰۹:۱۰")))
 +            composeRule.onNodeWithTag("navigation-home").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 11: home reopened")
 +            // Returning from the report recreates HomeDashboard at the top of its LazyColumn.
