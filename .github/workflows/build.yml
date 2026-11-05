@@ -260,7 +260,7 @@ jobs:
             else
               test_exit=$?
             fi
-            capture_logcat
+            adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
             exit "$test_exit"
 
       - name: Upload instrumentation-test reports
