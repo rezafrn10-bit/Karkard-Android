@@ -199,7 +199,7 @@ jobs:
           grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportCanManuallyReachTheCurrentDayCard)' "$project_root/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt"
           echo "project_root=$project_root" >> "$GITHUB_OUTPUT"
 
-      - name: Run instrumentation tests on Android ${{ matrix.api-level }}
+      # Keep test control flow in a checked-in Bash script; emulator-runner executes inline script lines via sh.\n      - name: Run instrumentation tests on Android ${{ matrix.api-level }}
         uses: reactivecircus/android-emulator-runner@v2.38.0
         with:
           api-level: ${{ matrix.api-level }}
