@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,224 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -32,6 +32,7 @@ index 0000000..0aeda6d
 +import androidx.compose.ui.test.performImeAction
 +import androidx.compose.ui.test.hasTestTag
 +import androidx.compose.ui.test.performScrollToNode
++import androidx.compose.ui.test.performScrollToIndex
 +import androidx.compose.ui.test.performTextInput
 +import androidx.test.core.app.ApplicationProvider
 +import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -180,8 +181,9 @@ index 0000000..0aeda6d
 +
 +            // The test interval is 07:10-16:20, so all reporting surfaces
 +            // must display exactly 09:10 from the same saved workday.
-+            composeRule.onNodeWithTag("daily-editor-list")
-+                .performScrollToNode(hasTestTag("summary-worked-value"))
++            // The month summary is item 0 in HomeDashboard's LazyColumn.
++            // Scroll by item index first because off-screen LazyColumn items are virtualized.
++            composeRule.onNodeWithTag("daily-editor-list").performScrollToIndex(0)
 +            composeRule.waitUntil(15_000) {
 +                runCatching {
 +                    composeRule.onNodeWithTag("summary-worked-value").assertTextEquals("۰۹:۱۰")
@@ -197,6 +199,8 @@ index 0000000..0aeda6d
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 9: before report navigation")
 +            composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 10: report opened")
++            // ReportScreen item 0 is the period selector; item 1 is WorkSummaryCard.
++            composeRule.onNodeWithTag("monthly-report-list").performScrollToIndex(1)
 +            composeRule.waitUntil(15_000) {
 +                runCatching {
 +                    composeRule.onNodeWithTag("summary-worked-value").assertTextEquals("۰۹:۱۰")
