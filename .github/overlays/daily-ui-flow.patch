@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,193 @@
+@@ -0,0 +1,198 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -149,6 +149,11 @@ index 0000000..0aeda6d
 +                managementDayForDate(readDb, todayKey).dayType == "کاری"
 +            )
 +
++            // Recompose and scroll again after the DB check; LazyColumn may have reset
++            // its viewport while the activity finishes the initial database reload.
++            composeRule.waitForIdle()
++            scrollToDailyTimeEntry()
++            composeRule.waitForIdle()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 1: before in-hour input")
 +            composeRule.onNodeWithTag("daily-entry-in-hour").performClick().performTextInput("07")
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 2: after in-hour input")
@@ -408,6 +413,45 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
          contentPadding = PaddingValues(bottom = 14.dp)
      ) {
 
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -1966,2 +1966,5 @@ internal fun validateWorkDay(day: WorkDay, db: WorkDb): String? {
+ internal fun validateWorkDay(day: WorkDay, db: WorkDb): String? {
++    if (isFridayOrOfficialHoliday(db, day.date) && day.dayType != "تعطیل رسمی") {
++        return "این تاریخ در تقویم تعطیل رسمی است و نوع روز قابل تغییر نیست."
++    }
+     fun validatePair(pair: Pair<String, String>, allowOpen: Boolean): String? {
+@@ -2347,17 +2347,9 @@
+                         onDayChange = { updated ->
+-                            // Editing changes UI state only. Persistence is explicit via
+-                            // the "ذخیره اطلاعات روز" button. Only an actual category
+-                            // change is a manual override; attendance and notes are not.
+-                            val officialLocked = isFridayOrOfficialHoliday(db, date) && updated.dayType == "کاری"
+-                            val safeUpdated = if (officialLocked) updated.copy(dayType = "تعطیل رسمی", dayTypeManual = false) else updated
+-                            val categoryChanged = hasDayTypeCategoryChanged(
+-                                day.dayType, day.extraDayTypes, safeUpdated.dayType, safeUpdated.extraDayTypes
+-                            )
+-                            day = safeUpdated.copy(
+-                                date = date,
+-                                // Only an actual category selection is a manual override.
+-                                // Adding attendance, a note, or a shift must not suppress a
+-                                // public holiday supplied by the calendar.
+-                                dayTypeManual = if (officialLocked) false else updated.dayTypeManual || categoryChanged
++                            // Enforce the same official-holiday precedence in editor state,
++                            // not only when the day is reloaded or shown in monthly reports.
++                            day = enforceCalendarDayTypePolicy(
++                                current = day,
++                                updated = updated.copy(date = date),
++                                isCalendarHoliday = isFridayOrOfficialHoliday(db, date)
+                             )
+                             dayDirty = true
+@@ -2641,4 +2632,4 @@
+                         dayTypes.forEach { (type, symbol) ->
+                             val selected = day.dayType == type
+-                            val locked = type == "کاری" && officialDate
++                            val locked = officialDate && type != "تعطیل رسمی"
+                             Card(
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
@@ -425,12 +469,41 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/Calen
          else -> "کاری"
      }
 
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarEditorDayTypePolicy.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarEditorDayTypePolicy.kt
+new file mode 100644
+index 0000000..e0ed6bf0d6bde74f6050ac1d56de0d23bbfce972
+--- /dev/null
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarEditorDayTypePolicy.kt
+@@ -0,0 +1,23 @@
++package ir.karkard.app
++
++/**
++ * Keeps the day editor aligned with the calendar resolver. A calendar holiday must
++ * remain an official holiday in editable state as well as in reports and storage.
++ */
++internal fun enforceCalendarDayTypePolicy(
++    current: WorkDay,
++    updated: WorkDay,
++    isCalendarHoliday: Boolean
++): WorkDay {
++    if (isCalendarHoliday) {
++        return updated.copy(
++            dayType = "تعطیل رسمی",
++            dayTypeManual = false,
++            attendanceStatus = if (updated.attendanceStatus == "عادی") "" else updated.attendanceStatus
++        )
++    }
++    val categoryChanged = hasDayTypeCategoryChanged(
++        current.dayType, current.extraDayTypes, updated.dayType, updated.extraDayTypes
++    )
++    return updated.copy(dayTypeManual = updated.dayTypeManual || categoryChanged)
++}
 diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt
 new file mode 100644
 index 0000000..e0ed6bf0d6bde74f6050ac1d56de0d23bbfce972
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyRegressionTest.kt
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,52 @@
 +package ir.karkard.app
 +
 +import org.junit.Assert.assertEquals
@@ -467,5 +540,19 @@ index 0000000..e0ed6bf0d6bde74f6050ac1d56de0d23bbfce972
 +        val resolved = resolveCalendarWorkdayStatus(special, true, false, false)
 +        assertEquals("تعطیل خاص", resolved.dayType)
 +        assertTrue(resolved.dayTypeManual)
++    }
++
++    @Test
++    fun officialCalendarHolidayCannotBeChangedToSpecialByEditorSelection() {
++        val current = WorkDay(date = "1405-03-06", dayType = "تعطیل رسمی")
++        val attempted = current.copy(
++            dayType = "تعطیل خاص",
++            dayTypeManual = true,
++            attendanceStatus = "عادی"
++        )
++        val enforced = enforceCalendarDayTypePolicy(current, attempted, isCalendarHoliday = true)
++        assertEquals("تعطیل رسمی", enforced.dayType)
++        assertFalse(enforced.dayTypeManual)
++        assertEquals("", enforced.attendanceStatus)
 +    }
 +}
