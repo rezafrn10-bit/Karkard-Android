@@ -232,28 +232,25 @@ jobs:
             find app/src/androidTest/java -type f -name '*Test.kt' -print
             echo 'Required UI test methods:'
             grep -nE 'fun (dailyEditorSavePersistsTimesAndReloadsThemAfterLeavingTheScreen|monthlyReportCanManuallyReachTheCurrentDayCard)' app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-            capture_logcat() {
-              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
-            }
             echo 'Checking emulator API level and Android system services...'
             if ! api_level="$(timeout 20s adb shell getprop ro.build.version.sdk | tr -d '\r')"; then
-              capture_logcat
+              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
               echo 'Emulator shell did not respond while reading Android API level.' >&2
               exit 1
             fi
             echo "Detected Android API level: $api_level"
-            if [[ "$api_level" != "${{ matrix.api-level }}" ]]; then
-              capture_logcat
+            if [ "$api_level" != "${{ matrix.api-level }}" ]; then
+              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
               echo "Expected Android API ${{ matrix.api-level }}, received $api_level." >&2
               exit 1
             fi
             if ! timeout 20s adb shell cmd package path android; then
-              capture_logcat
+              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
               echo 'Android PackageManager service is not responding.' >&2
               exit 1
             fi
             if ! timeout 20s adb shell am get-current-user; then
-              capture_logcat
+              adb logcat -d -v time > "$GITHUB_WORKSPACE/instrumentation-logcat.txt" || true
               echo 'Android ActivityManager service is not responding.' >&2
               exit 1
             fi
