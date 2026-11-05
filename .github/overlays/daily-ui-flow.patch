@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,176 @@
+@@ -0,0 +1,178 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -165,6 +165,8 @@ index 0000000..0aeda6d
 +            composeRule.waitForIdle()
 +            composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +            composeRule.onNodeWithTag("navigation-home").performClick()
++            // Returning from the report recreates HomeDashboard at the top of its LazyColumn.
++            scrollToDailyTimeEntry()
 +
 +            composeRule.onNodeWithTag("daily-entry-in-hour").assertTextEquals("۰۷")
 +            composeRule.onNodeWithTag("daily-entry-in-minute").assertTextEquals("۱۰")
