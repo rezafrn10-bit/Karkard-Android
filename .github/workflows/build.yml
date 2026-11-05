@@ -164,6 +164,25 @@ jobs:
           echo "Disk space after cleanup:"
           df -h /
 
+      - name: Enable and verify KVM for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -e /dev/kvm ]]; then
+            echo "::error::This runner does not expose /dev/kvm; refusing to launch a software-emulated Android device."
+            exit 1
+          fi
+          sudo groupadd --force kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          sudo chmod 0666 /dev/kvm
+          echo "KVM device permissions:"
+          ls -l /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+
       - name: Extract and locate Gradle project
         id: project
         shell: bash
@@ -213,6 +232,8 @@ jobs:
           emulator-boot-timeout: 1200
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
+          # KVM access is validated above; do not silently fall back to slow software CPU emulation.
+          disable-linux-hw-accel: false
           working-directory: ${{ github.workspace }}/${{ steps.project.outputs.project_root }}
           script: bash "$GITHUB_WORKSPACE/.github/scripts/run-android-instrumentation.sh"
 
