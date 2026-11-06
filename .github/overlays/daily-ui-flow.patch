@@ -586,10 +586,12 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 @@ -3834,7 +3834,7 @@
 -                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
 +                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-year-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
-@@ -4215,7 +4215,8 @@
--        Column(Modifier.fillMaxWidth().padding(7.dp),
-+        Column(Modifier.fillMaxWidth().padding(7.dp)
-+            .testTag(if (isHolidayCard) "monthly-holiday-card-${day.date}" else "monthly-ordinary-card-${day.date}"),
+@@ -4186,3 +4186,4 @@
+         Column(
+-            Modifier.fillMaxWidth().padding(7.dp),
++            Modifier.fillMaxWidth().padding(7.dp)
++                .testTag(if (isHolidayCard) "monthly-holiday-card-${day.date}" else "monthly-ordinary-card-${day.date}"),
+             verticalArrangement = Arrangement.spacedBy(6.dp)
 @@ -4268,7 +4269,8 @@
 -                                    status,
 +                                    status,
