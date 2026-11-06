@@ -25,7 +25,7 @@ Protected baseline commit: `3d2e8ee41fda6032260f17b666a6239678a1d4c9` (Test 254)
 | Worked-summary extension | head `4c7893a` | Added assertions for 09:10 on daily summary, monthly summary, and the current-day card. Not validated by CI yet. | Test-only coverage plus test tags. Do not claim this extension passes until a real build and API 34 run completes. |
 | Overlay context correction | head `b6ff6ad` | Corrected two patch context lines to match the actual source. | No intended runtime behavior change. |
 | Regression ledger added | head `895cb11` | Recorded the protected baseline, chronology, non-regression gates, and product direction on the PR branch. | Documentation only; no app-source or `main` change. |
-| CI runs after extension | #302 (`42197233224`), #303 (`42197243093`), #304 (`42197504455`), #305 (`42197511307`, attempt 2) | Failed before runner execution: job has `runner_id=0`, blank `runner_name`, empty `steps=[]`; no downloadable job log. API 34 job skipped because build job failed. | Not evidence of a Kotlin/Gradle/test failure. Diagnose GitHub Actions startup/runner/account state before changing app code. |
+| CI runs after extension | #302 (`42197233224`), #303 (`42197243093`), #304 (`42197504455`), #305 (`42197511307`, attempts 1–3) | Failed before runner execution: job has `runner_id=0`, blank `runner_name`, empty `steps=[]`; no downloadable job log. API 34 job skipped because build job failed. | Not evidence of a Kotlin/Gradle/test failure. Diagnose GitHub Actions startup/runner/account state before changing app code. |
 
 PR #3 is still draft/open/unmerged. `main` remains at the Test 254 baseline commit. The results from run #301 apply to the earlier PR #3 patch, not to the later 09:10 worked-summary extension.
 
