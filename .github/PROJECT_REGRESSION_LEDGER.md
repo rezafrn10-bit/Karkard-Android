@@ -112,6 +112,8 @@ After editing:
 
 
 ### Follow-up regression branch validation
-- The focused default-`عادی` projection change was smoke-tested locally against the exact `dayStatuses` logic: normal workday produces `کاری + عادی`; mission workday produces `کاری + مأموریت` without `عادی`; official holiday produces `تعطیل رسمی` without `عادی`. This is a Kotlin logic smoke test, not an Android build.
+- The focused default-`عادی` projection change was smoke-tested by extracting the actual `WorkDay` and patched `dayStatuses()` source from the local run #301 Kotlin snapshot and compiling it with Kotlin: 4/4 scenarios passed (normal workday produces `کاری + عادی`; mission workday produces `کاری + مأموریت` without `عادی`; official holiday produces `تعطیل رسمی` without `عادی`; stale legacy `کاری|عادی` values remain blocked on a holiday). The final two overlay hunks also passed `patch --dry-run` and application against that source snapshot. This is focused source/logic verification, not the full Gradle suite or Android instrumentation.
 - GitHub Actions push runs #318 (`42211161941`) and #319 (`42211200729`) on the focused branch both failed before any step: build jobs have `runner_id=0`, blank runner name, and empty steps; API 34 jobs skipped. Job log download returned `BlobNotFound`. These runs do not report a Kotlin, Gradle, JUnit, or Compose failure; CI startup still blocks full validation.
 - The focused fix and regression tests are now included in PR #3's branch. PR #3 remains Draft/open/unmerged; main remains at Test 254.
+
+- PR validation attempts #320–#326 also reproduce the same pre-runner failure (`runner_id=0`, blank runner name, empty steps); API 34 jobs are skipped. The latest attempt is #326 (`42211463934`).
