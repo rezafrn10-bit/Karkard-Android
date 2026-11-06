@@ -101,3 +101,11 @@ After editing:
 - Run unit tests, assembleDebug, and API 34 instrumentation.
 - Update this ledger with the commit, workflow run, exact results, and any failures.
 - If GitHub does not start a runner, stop modifying app logic and diagnose CI/account infrastructure first.
+
+
+## 6. Regression found and fixed in the monthly day card (2026-11-06)
+- Root cause: the Day editor treats an empty `attendance_status` on a workday as the selected default `عادی` state, but the shared `dayStatuses()` projection only emitted attendance badges when the DB field was explicitly non-empty. The monthly `ReportDayCard` consumes that projection, so the card showed `کاری` without `عادی`, even though the day editor showed both controls selected. This made the Day and Month surfaces disagree.
+- Focused fix: derive an effective attendance status of `عادی` for a workday when the stored field is blank; retain the existing holiday guard so official/special holidays never gain an `عادی` badge; preserve explicit leave/mission status instead of adding a normal badge.
+- Regression tests added: a unit test for workday + default normal together; a test that explicit mission replaces normal; a test that official holiday does not inherit normal; Android UI assertion that the monthly current-day card displays both `کاری` and `عادی` for the same ordinary workday.
+- This change is deliberately limited to the shared display-status projection and tests. It does not modify calculations, DB schema, stored records, calendar resolution, or Test 254 baseline.
+- Validation is pending the full GitHub Actions unit/build + API 34 run. Do not call the fix validated until both jobs complete successfully with zero skipped tests.
