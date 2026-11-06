@@ -214,7 +214,7 @@ index 0000000..0aeda6d
 +                .performScrollToNode(hasTestTag("monthly-current-day-card"))
 +            composeRule.onNodeWithTag("monthly-current-day-card", useUnmergedTree = true)
 +                .assert(hasAnyDescendant(hasText("۰۹:۱۰")))
-+            composeRule.onNodeWithTag("monthly-day-worked-value", useUnmergedTree = true)
++            composeRule.onNodeWithTag("monthly-day-worked-value-$todayKey", useUnmergedTree = true)
 +                .assertTextEquals("۰۹:۱۰")
 +            composeRule.onNodeWithTag("navigation-home").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 11: home reopened")
@@ -686,7 +686,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 +        PersianText(value, modifier = testTag?.let { Modifier.testTag(it) } ?: Modifier, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
 @@ -4311,1 +4311,1 @@
 -                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f))
-+                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f), testTag = "monthly-day-worked-value")
++                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f), testTag = "monthly-day-worked-value-${day.date}")
 @@ -4347,6 +4347,6 @@
 -private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier) {
 +private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier, testTag: String? = null) {
