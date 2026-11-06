@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,220 @@
+@@ -0,0 +1,213 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -112,13 +112,6 @@ index 0000000..0aeda6d
 +            cleanupDb.close()
 +        }
 +
-+        // The entry row lives below the initial viewport in this LazyColumn.
-+        // Scroll to it before asserting visibility; waiting alone cannot compose an off-screen item.
-+        scrollToDailyTimeEntry()
-+        composeRule.onNodeWithTag("navigation-report-monthly").performClick()
-+        composeRule.onNodeWithTag("navigation-home").performClick()
-+        // HomeDashboard is recreated at the top after leaving the screen.
-+        scrollToDailyTimeEntry()
 +    }
 +
 +    @After
@@ -583,10 +576,10 @@ index 0000000..e0ed6bf0d6bde74f6050ac1d56de0d23bbfce972
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
-@@ -3820 +3820 @@
+@@ -3820,1 +3820,1 @@
 -                        OutlinedButton(onClick = { monthMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
 +                        OutlinedButton(onClick = { monthMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-month-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
-@@ -3834 +3834 @@
+@@ -3834,1 +3834,1 @@
 -                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
 +                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-year-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
 @@ -4186,3 +4186,4 @@
@@ -595,7 +588,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 +            Modifier.fillMaxWidth().padding(7.dp)
 +                .testTag(if (isHolidayCard) "monthly-holiday-card-${day.date}" else "monthly-ordinary-card-${day.date}"),
              verticalArrangement = Arrangement.spacedBy(6.dp)
-@@ -4268 +4269,2 @@
+@@ -4268,1 +4269,2 @@
 -                                    status,
 +                                    status,
 +                                    modifier = Modifier.testTag("monthly-day-status-${day.date}-$status"),
