@@ -117,3 +117,11 @@ After editing:
 - The focused fix and regression tests are now included in PR #3's branch. PR #3 remains Draft/open/unmerged; main remains at Test 254.
 
 - PR validation attempts #320–#326 also reproduce the same pre-runner failure (`runner_id=0`, blank runner name, empty steps); API 34 jobs are skipped. The latest attempt is #326 (`42211463934`).
+
+
+### Expanded verification for the workday/attendance projection (2026-11-06)
+- Expanded the checked-in JUnit regression file from 3 to 9 focused cases: default normal attendance beside the work category; explicitly selected normal attendance; mission, entitled leave, and sick leave replacing normal attendance; official and special holidays not receiving normal attendance; stale legacy `کاری|عادی` badges ignored on official holidays; and switching a workday to a holiday clearing explicit normal attendance.
+- Extracted the exact `WorkDay`, status constants, and status/toggle functions from the run #301 Kotlin source snapshot; applied the focused fix; compiled the resulting Kotlin file with `kotlinc-jvm 1.9.0`; ran a 9-scenario harness: **9/9 passed**. This verifies the pure source logic, not the Android/Gradle application build or device UI.
+- Static overlay integrity check: all four added-file unified-diff hunk lengths match their actual line counts (268/268, 23/23, 52/52, 102/102).
+- The existing Android instrumentation now makes its current-day fixture deterministic (`dayType=کاری`, `attendanceStatus=""`) and asserts both status chips on the monthly card, in addition to the saved 09:10 value.
+- Full CI is still required. No APK or release artifact is produced from this local logic-only check.
