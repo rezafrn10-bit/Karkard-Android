@@ -1,0 +1,30 @@
+name: Hosted runner allocation diagnostic
+
+on:
+  push:
+    branches:
+      - diagnostics/runner-startup
+    paths:
+      - .github/workflows/runner-diagnostic.yml
+
+permissions:
+  contents: read
+
+jobs:
+  hosted-runner:
+    name: Verify GitHub-hosted ubuntu-24.04 allocation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify runner allocation without touching app sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Runner allocation diagnostic started."
+          echo "RUNNER_OS=${RUNNER_OS:-unset}"
+          echo "RUNNER_ARCH=${RUNNER_ARCH:-unset}"
+          echo "ImageOS=${ImageOS:-unset}"
+          echo "ImageVersion=${ImageVersion:-unset}"
+          test "${RUNNER_OS:-}" = "Linux"
+          test -n "${RUNNER_ARCH:-}"
+          echo "HOSTED_RUNNER_ALLOCATION_OK"
