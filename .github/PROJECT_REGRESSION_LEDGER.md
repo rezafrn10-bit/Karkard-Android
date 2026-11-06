@@ -109,3 +109,9 @@ After editing:
 - Regression tests added: a unit test for workday + default normal together; a test that explicit mission replaces normal; a test that official holiday does not inherit normal; Android UI assertion that the monthly current-day card displays both `کاری` and `عادی` for the same ordinary workday.
 - This change is deliberately limited to the shared display-status projection and tests. It does not modify calculations, DB schema, stored records, calendar resolution, or Test 254 baseline.
 - Validation is pending the full GitHub Actions unit/build + API 34 run. Do not call the fix validated until both jobs complete successfully with zero skipped tests.
+
+
+### Follow-up regression branch validation
+- The focused default-`عادی` projection change was smoke-tested locally against the exact `dayStatuses` logic: normal workday produces `کاری + عادی`; mission workday produces `کاری + مأموریت` without `عادی`; official holiday produces `تعطیل رسمی` without `عادی`. This is a Kotlin logic smoke test, not an Android build.
+- GitHub Actions push runs #318 (`42211161941`) and #319 (`42211200729`) on the focused branch both failed before any step: build jobs have `runner_id=0`, blank runner name, and empty steps; API 34 jobs skipped. Job log download returned `BlobNotFound`. These runs do not report a Kotlin, Gradle, JUnit, or Compose failure; CI startup still blocks full validation.
+- The focused fix and regression tests are now included in PR #3's branch. PR #3 remains Draft/open/unmerged; main remains at Test 254.
