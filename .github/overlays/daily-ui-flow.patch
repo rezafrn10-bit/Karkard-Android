@@ -22,6 +22,7 @@ index 0000000..0aeda6d
 +import android.content.Context
 +import android.util.Log
 +import androidx.compose.ui.test.assertIsDisplayed
++import androidx.compose.ui.test.assertDoesNotExist
 +import androidx.compose.ui.test.assertTextEquals
 +import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 +import androidx.compose.ui.test.onNodeWithTag
