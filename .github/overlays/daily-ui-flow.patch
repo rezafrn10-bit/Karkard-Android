@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,278 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -847,12 +847,12 @@ index 0000000..be9a176e2f7c4cbd681aa783f8e65f53f7ced6a0
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
-@@ -45,6 +45,8 @@
+@@ -45,1 +45,3 @@
  import androidx.compose.ui.platform.testTag
 +import androidx.compose.ui.semantics.selected
 +import androidx.compose.ui.semantics.semantics
 
-@@ -2642,15 +2642,17 @@
+@@ -2642,17 +2642,20 @@
                          dayTypes.forEach { (type, symbol) ->
 -                            val selected = day.dayType == type
 +                            val isSelected = day.dayType == type
@@ -879,7 +879,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
                          }
                      }
 
-@@ -2684,11 +2686,13 @@
+@@ -2684,10 +2686,13 @@
                          attendanceStatuses.forEach { status ->
 -                            val selected = if (status == "عادی") day.dayType == "کاری" && day.attendanceStatus in setOf("", "عادی") else day.attendanceStatus == status
 +                            val isSelected = if (status == "عادی") day.dayType == "کاری" && day.attendanceStatus in setOf("", "عادی") else day.attendanceStatus == status
