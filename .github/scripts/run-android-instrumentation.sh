@@ -51,7 +51,7 @@ timeout 30s adb wait-for-device
 timeout 30s adb shell settings put global auto_time 0
 timeout 30s adb shell settings put global auto_time_zone 0
 timeout 30s adb shell setprop persist.sys.timezone Etc/UTC
-timeout 30s adb shell date -s '2026-11-05 12:00:00'
+timeout 30s adb shell toybox date 110512002026.00
 test_date="$(timeout 30s adb shell date -u '+%Y-%m-%d' | tr -d '\r')"
 if [[ "$test_date" != "2026-11-05" ]]; then
   echo "Expected deterministic Test 254 date 2026-11-05, received $test_date." >&2
