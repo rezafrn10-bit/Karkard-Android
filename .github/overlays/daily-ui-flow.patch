@@ -101,6 +101,9 @@ index 0000000..0aeda6d
 +            val baseline = originalDay ?: WorkDay(todayKey)
 +            val emptyTestDay = baseline.copy(
 +                date = todayKey,
++                dayType = "کاری",
++                dayTypeManual = true,
++                attendanceStatus = "",
 +                in1 = "", out1 = "", in2 = "", out2 = "",
 +                in3 = "", out3 = "", in4 = "", out4 = "",
 +                holidayIn = "", holidayOut = "",
@@ -216,6 +219,12 @@ index 0000000..0aeda6d
 +                .assert(hasAnyDescendant(hasText("۰۹:۱۰")))
 +            composeRule.onNodeWithTag("monthly-day-worked-value-$todayKey", useUnmergedTree = true)
 +                .assertTextEquals("۰۹:۱۰")
++            // The daily editor treats an empty attendance_status as the default "عادی".
++            // The monthly day card must show that same effective state beside "کاری".
++            composeRule.onNodeWithTag("monthly-day-status-$todayKey-کاری", useUnmergedTree = true)
++                .assertIsDisplayed()
++            composeRule.onNodeWithTag("monthly-day-status-$todayKey-عادی", useUnmergedTree = true)
++                .assertIsDisplayed()
 +            composeRule.onNodeWithTag("navigation-home").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 11: home reopened")
 +            // Returning from the report recreates HomeDashboard at the top of its LazyColumn.
@@ -697,3 +706,62 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 -        PersianText(value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
 +        PersianText(value, modifier = testTag?.let { Modifier.testTag(it) } ?: Modifier, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
 +
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -216,7 +216,9 @@ internal fun dayStatuses(day: WorkDay): Set<String> = buildSet {
+     // Attendance is a separate vocabulary from the day category. In particular, an
+     // invalid/stale "کاری" value in attendance_status must never add a working-day
+     // badge to an official holiday card.
+-    if (day.attendanceStatus in attendanceStatuses &&
+-        (day.attendanceStatus != "عادی" || primaryDayType == "کاری")) {
+-        add(day.attendanceStatus)
++    val effectiveAttendanceStatus = day.attendanceStatus.ifBlank {
++        if (primaryDayType == "کاری") "عادی" else ""
++    }
++    if (effectiveAttendanceStatus in attendanceStatuses &&
++        (effectiveAttendanceStatus != "عادی" || primaryDayType == "کاری")) {
++        add(effectiveAttendanceStatus)
+     }
+
+diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
+@@ -0,0 +1,36 @@
++package ir.karkard.app
++
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class DayStatusCompatibilityRegressionTest {
++    @Test
++    fun ordinaryWorkdayShowsWorkCategoryAndNormalAttendanceTogether() {
++        val statuses = dayStatuses(WorkDay(date = "1405-08-14", dayType = "کاری"))
++
++        assertTrue("A normal workday must include the working-day category", "کاری" in statuses)
++        assertTrue("A normal workday must also include the default normal-attendance status", "عادی" in statuses)
++    }
++
++    @Test
++    fun explicitlySelectedAttendanceReplacesTheDefaultNormalBadge() {
++        val statuses = dayStatuses(
++            WorkDay(date = "1405-08-14", dayType = "کاری", attendanceStatus = "مأموریت")
++        )
++
++        assertTrue("The workday category remains selected", "کاری" in statuses)
++        assertTrue("The selected attendance status is shown", "مأموریت" in statuses)
++        assertFalse("A mission day must not simultaneously show normal attendance", "عادی" in statuses)
++    }
++
++    @Test
++    fun holidayDoesNotReceiveTheDefaultNormalAttendanceBadge() {
++        val statuses = dayStatuses(WorkDay(date = "1405-03-06", dayType = "تعطیل رسمی"))
++
++        assertTrue("The official holiday category remains visible", "تعطیل رسمی" in statuses)
++        assertFalse("A holiday must not show normal attendance", "عادی" in statuses)
++    }
++}
