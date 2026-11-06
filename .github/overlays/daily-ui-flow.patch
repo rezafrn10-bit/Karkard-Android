@@ -668,7 +668,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 @@ -3445,5 +3445,5 @@
 -private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier) {
 +private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier, testTag: String? = null) {
-     Card(modifier = modifier.border(1.dp, RoundedCornerShape(10.dp)), colors = CardDefaults.cardColors(containerColor = background), shape = RoundedCornerShape(10.dp)) {
+     Card(modifier = modifier.border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(10.dp)), colors = CardDefaults.cardColors(containerColor = background), shape = RoundedCornerShape(10.dp)) {
          Column(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
              PersianText(label, fontSize = 10.sp, color = foreground, textAlign = TextAlign.Center, maxLines = 1)
 -            PersianText(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
@@ -691,7 +691,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 -private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier) {
 +private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier, testTag: String? = null) {
      Column(modifier = modifier.background(background, RoundedCornerShape(9.dp))
-         .border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(10.dp)).padding(horizontal = 5.dp, vertical = 8.dp),
+         .border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(9.dp)).padding(horizontal = 5.dp, vertical = 8.dp),
          horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
          PersianText(title, fontSize = 11.sp, color = foreground, textAlign = TextAlign.Center, maxLines = 1)
 -        PersianText(value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
