@@ -20,6 +20,9 @@ index 0000000..0aeda6d
 +package ir.karkard.app
 +
 +import android.content.Context
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.graphics.toPixelMap
++import androidx.compose.ui.test.captureToImage
 +import android.util.Log
 +import androidx.compose.ui.test.assertIsDisplayed
 +import org.junit.Assert.assertTrue
@@ -232,6 +235,14 @@ index 0000000..0aeda6d
 +        composeRule.onNodeWithTag("monthly-report-list")
 +            .performScrollToNode(hasTestTag("monthly-day-card-$date"))
 +        composeRule.onNodeWithTag("monthly-day-card-$date").assertIsDisplayed()
++        val cardPixels = composeRule.onNodeWithTag("monthly-day-card-$date").captureToImage().toPixelMap()
++        val hasSoftRedHolidayFill = (0 until cardPixels.height).any { y ->
++            (0 until cardPixels.width).any { x -> cardPixels[x, y] == Color(0xFFFFF5F5) }
++        }
++        assertTrue(
++            "The official-holiday card must render its soft-red background",
++            hasSoftRedHolidayFill
++        )
 +        composeRule.onNodeWithTag("monthly-holiday-card-$date", useUnmergedTree = true).assertIsDisplayed()
 +        composeRule.onNodeWithTag("monthly-day-status-$date-تعطیل رسمی", useUnmergedTree = true).assertIsDisplayed()
 +        assertTrue(
