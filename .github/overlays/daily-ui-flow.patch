@@ -371,7 +371,7 @@ index 1290bb5..0eba92a 100644
                          shiftDuration = periodSessionMinutes(shiftsForDay),
                          hasShift = shiftsForDay.isNotEmpty(),
                          activityCount = shiftsForDay.size,
-+                        modifier = Modifier.testTag(if (reportDay.date == todayJalali) "monthly-current-day-card" else "monthly-day-card"),
++                        modifier = Modifier.testTag(if (reportDay.date == todayJalali) "monthly-current-day-card" else "monthly-day-card-${reportDay.date}"),
                          selected = isSelected,
                          selectionMode = selectionMode,
                          onClick = {
