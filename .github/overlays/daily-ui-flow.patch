@@ -592,6 +592,23 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 @@ -3834,1 +3834,1 @@
 -                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
 +                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-year-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
+@@ -4125,1 +4125,1 @@
+-    day: WorkDay,
++    sourceDay: WorkDay,
+@@ -4136,3 +4136,13 @@
+ ) {
++    val day = remember(sourceDay, db) {
++        val canonicalDate = normalizedJalaliDateKey(sourceDay.date) ?: sourceDay.date
++        val calendarYear = canonicalDate.take(4).toIntOrNull() ?: 0
++        resolveCalendarWorkdayStatus(
++            current = sourceDay.copy(date = canonicalDate),
++            hasManualDayType = sourceDay.dayTypeManual,
++            isFriday = jalaliWeekday(canonicalDate) == 5,
++            isOfficialHoliday = canonicalDate in calendarOfficialHolidayDates(db, calendarYear)
++        ).copy(date = canonicalDate)
++    }
+     val weekDay = jalaliWeekday(day.date)?.let { JalaliWeekdayNames.getOrNull(it) }.orEmpty()
+     val holidayEntryExists = isHolidayWorkDay(day)
 @@ -4186,3 +4186,4 @@
          Column(
 -            Modifier.fillMaxWidth().padding(7.dp),
