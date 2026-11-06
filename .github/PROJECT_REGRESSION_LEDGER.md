@@ -125,3 +125,11 @@ After editing:
 - Static overlay integrity check: all four added-file unified-diff hunk lengths match their actual line counts (268/268, 23/23, 52/52, 102/102).
 - The existing Android instrumentation now makes its current-day fixture deterministic (`dayType=کاری`, `attendanceStatus=""`) and asserts both status chips on the monthly card, in addition to the saved 09:10 value.
 - Full CI is still required. No APK or release artifact is produced from this local logic-only check.
+
+
+### UI-level selected-state verification (2026-11-06)
+- Added explicit Compose selected semantics and stable test tags to the three day-category choices and four attendance choices. This also makes the current selection discoverable to accessibility services rather than relying only on background color.
+- The Android instrumentation now fixes its disposable fixture to an ordinary workday with blank attendance storage, then asserts `day-category-کاری` and `attendance-status-عادی` are both selected before it proceeds to save the 07:10–16:20 interval. It later asserts both labels appear on the monthly card.
+- The semantics approach follows AndroidX Compose's documented `selected` property and `Modifier.semantics` API: [Compose semantics reference](https://developer.android.com/reference/kotlin/androidx/compose/ui/semantics/package-summary).
+- Local validation: the isolated MainActivity selected-semantics patch passed `patch --dry-run` and apply against the exact run #301 Kotlin snapshot. The pure Kotlin status logic harness remains 9/9 passed. These do not replace a Gradle build or API 34 instrumentation.
+- Latest run #336 attempt 2 (`42212332919`) again failed before any step with `runner_id=0`, blank runner name, and zero steps; API 34 was skipped. GitHub's public status shows Actions operational, so this is not currently confirmed as a platform-wide outage; root cause remains unavailable in the job metadata.
