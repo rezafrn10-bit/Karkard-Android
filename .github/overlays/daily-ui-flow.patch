@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,213 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -213,6 +213,23 @@ index 0000000..0aeda6d
 +        composeRule.onNodeWithTag("monthly-report-list")
 +            .performScrollToNode(hasTestTag("monthly-current-day-card"))
 +        composeRule.onNodeWithTag("monthly-current-day-card").assertIsDisplayed()
++    }
++
++    @Test
++    fun eidAlAdha1405IsAnOfficialHolidayInTheMonthlyCard() {
++        composeRule.onNodeWithTag("navigation-report-monthly").performClick()
++        composeRule.onNodeWithTag("monthly-year-picker").performClick()
++        composeRule.onNodeWithText("۱۴۰۵").performClick()
++        composeRule.onNodeWithTag("monthly-month-picker").performClick()
++        composeRule.onNodeWithText("خرداد").performClick()
++
++        val date = "1405-03-06"
++        composeRule.onNodeWithTag("monthly-report-list")
++            .performScrollToNode(hasTestTag("monthly-day-card-$date"))
++        composeRule.onNodeWithTag("monthly-day-card-$date").assertIsDisplayed()
++        composeRule.onNodeWithTag("monthly-holiday-card-$date").assertIsDisplayed()
++        composeRule.onNodeWithTag("monthly-day-status-$date-تعطیل رسمی").assertIsDisplayed()
++        composeRule.onNodeWithTag("monthly-day-status-$date-کاری").assertDoesNotExist()
 +    }
 +}
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
@@ -556,3 +573,22 @@ index 0000000..e0ed6bf0d6bde74f6050ac1d56de0d23bbfce972
 +        assertEquals("", enforced.attendanceStatus)
 +    }
 +}
+
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -3820,7 +3820,7 @@
+-                        OutlinedButton(onClick = { monthMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
++                        OutlinedButton(onClick = { monthMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-month-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
+@@ -3834,7 +3834,7 @@
+-                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
++                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-year-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
+@@ -4215,7 +4215,8 @@
+-        Column(Modifier.fillMaxWidth().padding(7.dp),
++        Column(Modifier.fillMaxWidth().padding(7.dp)
++            .testTag(if (isHolidayCard) "monthly-holiday-card-${day.date}" else "monthly-ordinary-card-${day.date}"),
+@@ -4268,7 +4269,8 @@
+-                                    status,
++                                    status,
++                                    modifier = Modifier.testTag("monthly-day-status-${day.date}-$status"),
