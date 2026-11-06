@@ -16,7 +16,7 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,213 @@
+@@ -0,0 +1,223 @@
 +package ir.karkard.app
 +
 +import android.content.Context
@@ -111,6 +111,16 @@ index 0000000..0aeda6d
 +        } finally {
 +            cleanupDb.close()
 +        }
++
++        // Stabilize the first activity composition without depending on a workday-only field.
++        composeRule.waitForIdle()
++        composeRule.waitUntil(30_000) {
++            composeRule.onAllNodesWithTag("navigation-report-monthly")
++                .fetchSemanticsNodes().isNotEmpty()
++        }
++        composeRule.onNodeWithTag("navigation-report-monthly").performClick()
++        composeRule.onNodeWithTag("navigation-home").performClick()
++        composeRule.waitForIdle()
 +
 +    }
 +
