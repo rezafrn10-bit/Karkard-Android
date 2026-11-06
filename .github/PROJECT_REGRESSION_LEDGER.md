@@ -143,3 +143,13 @@ After editing:
 - This is a pure-engine local validation only. The full Gradle/JUnit suite and Android instrumentation have not run. No APK is claimed.
 - Repository packaging constraint: the active branch stores the full application source inside the binary `Karkard_Android_Project.zip`; the connected GitHub file reader returns no bytes for that binary archive. Therefore this local two-file patch is not yet integrated into the repository archive or CI. The protected `main` branch remains unchanged.
 - Separate compatibility point still under review: v0.44 supported three attendance pairs, while the later fixed/flexible design intentionally restricts flexible mode to one pair. That UI/validation contract must be reconciled as a single coordinated change rather than changing only the calculation helper.
+
+
+### v0.43/v0.44 multi-interval restoration (2026-11-06, follow-up)
+- Extended the compatibility correction beyond the incomplete-pair early return: the current flexible-mode adapter had been passing only pair 1 into the calculation engine, although the monthly card displayed pairs 1-4. This created a second display/calculation mismatch.
+- The daily editor now exposes optional pairs 2 and 3 in flexible mode, as in v0.44, and also supports the newer fourth stored pair. All recorded attendance pairs are included in flexible-mode calculation; in fixed mode, pairs 2-4 remain separately classified as overtime and retain the existing fixed-window validation.
+- Updated the daily editor explanation and incomplete-information warning so they describe the actual calculation: complete intervals count; only the incomplete interval is omitted; the day remains marked incomplete.
+- Added regression tests for three legacy intervals, a fourth recorded interval, complete intervals alongside a partial interval, partial leave, fixed-mode overtime, and overlap de-duplication.
+- Directly compiled and executed the actual `WorkCalculationEngine.kt` and `WorkCalculationEngineTest.kt` with a minimal local JUnit-compatible runner: **12/12 engine tests passed**. The independent Kotlin probe also passed 7/7 assertions.
+- Static Kotlin parser pass: the edited `MainActivity.kt` produced no syntax/“expecting” diagnostics. Android/Compose symbol resolution was unavailable outside the Gradle project, so this is not an Android compile.
+- The source archive remains the build input and is stored as a binary ZIP in the repository. The GitHub content connector cannot read that binary blob, so this local overlay has not yet been integrated into the packaged archive. No full Gradle build, device instrumentation, or APK is claimed. Main remains protected.
