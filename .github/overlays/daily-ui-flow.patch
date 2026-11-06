@@ -22,7 +22,7 @@ index 0000000..0aeda6d
 +import android.content.Context
 +import android.util.Log
 +import androidx.compose.ui.test.assertIsDisplayed
-+import androidx.compose.ui.test.assertDoesNotExist
++import org.junit.Assert.assertTrue
 +import androidx.compose.ui.test.assertTextEquals
 +import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 +import androidx.compose.ui.test.onNodeWithTag
@@ -231,7 +231,10 @@ index 0000000..0aeda6d
 +        composeRule.onNodeWithTag("monthly-day-card-$date").assertIsDisplayed()
 +        composeRule.onNodeWithTag("monthly-holiday-card-$date").assertIsDisplayed()
 +        composeRule.onNodeWithTag("monthly-day-status-$date-تعطیل رسمی").assertIsDisplayed()
-+        composeRule.onNodeWithTag("monthly-day-status-$date-کاری").assertDoesNotExist()
++        assertTrue(
++            "A working-day status must not appear for an official holiday",
++            composeRule.onAllNodesWithTag("monthly-day-status-$date-کاری").fetchSemanticsNodes().isEmpty()
++        )
 +    }
 +}
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
