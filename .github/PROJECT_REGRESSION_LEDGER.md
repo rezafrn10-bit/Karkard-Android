@@ -29,6 +29,10 @@ Protected baseline commit: `3d2e8ee41fda6032260f17b666a6239678a1d4c9` (Test 254)
 
 PR #3 is still draft/open/unmerged. `main` remains at the Test 254 baseline commit. The results from run #301 apply to the earlier PR #3 patch, not to the later 09:10 worked-summary extension.
 
+### Architecture guardrail
+- Keep one daily calculation path: `dailyWorkStats` delegates the minute arithmetic to `WorkCalculationEngine`; day, month, and export surfaces must consume those canonical results rather than reimplementing formulas in UI code.
+- Keep the local database/repository as the source of truth for this offline-first app. Android's architecture guidance recommends a local source of truth for offline-first data and a repository boundary for exposing it to UI layers: [Data layer](https://developer.android.com/topic/architecture/data-layer), [Offline-first](https://developer.android.com/topic/architecture/data-layer/offline-first).
+
 ## 3. Required regression gates
 
 The following checks are cumulative. New tests extend this list; they do not replace earlier tests.
