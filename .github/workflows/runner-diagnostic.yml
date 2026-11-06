@@ -13,7 +13,7 @@ permissions:
 jobs:
   hosted-runner:
     name: Verify GitHub-hosted ubuntu-24.04 allocation
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Verify runner allocation without touching app sources
