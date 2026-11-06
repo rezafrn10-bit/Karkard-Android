@@ -730,7 +730,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,34 @@
 +package ir.karkard.app
 +
 +import org.junit.Assert.assertFalse
