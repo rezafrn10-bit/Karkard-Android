@@ -232,11 +232,11 @@ index 0000000..0aeda6d
 +        composeRule.onNodeWithTag("monthly-report-list")
 +            .performScrollToNode(hasTestTag("monthly-day-card-$date"))
 +        composeRule.onNodeWithTag("monthly-day-card-$date").assertIsDisplayed()
-+        composeRule.onNodeWithTag("monthly-holiday-card-$date").assertIsDisplayed()
-+        composeRule.onNodeWithTag("monthly-day-status-$date-تعطیل رسمی").assertIsDisplayed()
++        composeRule.onNodeWithTag("monthly-holiday-card-$date", useUnmergedTree = true).assertIsDisplayed()
++        composeRule.onNodeWithTag("monthly-day-status-$date-تعطیل رسمی", useUnmergedTree = true).assertIsDisplayed()
 +        assertTrue(
 +            "A working-day status must not appear for an official holiday",
-+            composeRule.onAllNodesWithTag("monthly-day-status-$date-کاری").fetchSemanticsNodes().isEmpty()
++            composeRule.onAllNodesWithTag("monthly-day-status-$date-کاری", useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
 +        )
 +    }
 +}
