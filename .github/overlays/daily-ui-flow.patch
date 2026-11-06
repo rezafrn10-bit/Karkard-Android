@@ -710,7 +710,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
-@@ -216,7 +216,9 @@ internal fun dayStatuses(day: WorkDay): Set<String> = buildSet {
+@@ -216,7 +216,10 @@ internal fun dayStatuses(day: WorkDay): Set<String> = buildSet {
      // Attendance is a separate vocabulary from the day category. In particular, an
      // invalid/stale "کاری" value in attendance_status must never add a working-day
      // badge to an official holiday card.
@@ -727,7 +727,7 @@ diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainA
 
 diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
 new file mode 100644
-index 0000000..0000000
+index 0000000..be9a176e2f7c4cbd681aa783f8e65f53f7ced6a0
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
 @@ -0,0 +1,34 @@
