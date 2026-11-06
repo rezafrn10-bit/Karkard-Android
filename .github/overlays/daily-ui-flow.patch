@@ -25,6 +25,7 @@ index 0000000..0aeda6d
 +import androidx.compose.ui.test.captureToImage
 +import android.util.Log
 +import androidx.compose.ui.test.assertIsDisplayed
++import androidx.compose.ui.test.assertIsSelected
 +import org.junit.Assert.assertTrue
 +import androidx.compose.ui.test.assertTextEquals
 +import androidx.compose.ui.test.hasAnyDescendant
@@ -161,6 +162,15 @@ index 0000000..0aeda6d
 +                "The current date is not a normal working day in the bundled calendar",
 +                managementDayForDate(readDb, todayKey).dayType == "کاری"
 +            )
++
++            // The category and attendance editor are independent selections.
++            // Their selected semantics make the two-light requirement verifiable.
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("day-category-کاری"))
++            composeRule.onNodeWithTag("day-category-کاری").assertIsSelected()
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("attendance-status-عادی"))
++            composeRule.onNodeWithTag("attendance-status-عادی").assertIsSelected()
 +
 +            // Recompose and scroll again after the DB check; LazyColumn may have reset
 +            // its viewport while the activity finishes the initial database reload.
@@ -833,3 +843,55 @@ index 0000000..be9a176e2f7c4cbd681aa783f8e65f53f7ced6a0
 +        assertFalse("Holiday must not be reported as a normal workday", "عادی" in dayStatuses(updated))
 +    }
 +}
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -45,6 +45,7 @@
+ import androidx.compose.ui.platform.testTag
++import androidx.compose.ui.semantics.selected
+
+@@ -2642,15 +2642,17 @@
+                         dayTypes.forEach { (type, symbol) ->
+-                            val selected = day.dayType == type
++                            val isSelected = day.dayType == type
+                             val locked = officialDate && type != "تعطیل رسمی"
+                             Card(
+-                                modifier = Modifier.weight(1f).height(62.dp).border(1.dp, if (selected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(10.dp)),
++                                modifier = Modifier.weight(1f).height(62.dp)
++                                    .testTag("day-category-$type")
++                                    .semantics { selected = isSelected }
++                                    .border(1.dp, if (isSelected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(10.dp)),
+                                 shape = RoundedCornerShape(10.dp),
+-                                colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFE3EEFF) else if (locked) Color(0xFFF1F1F1) else Color.White),
++                                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFE3EEFF) else if (locked) Color(0xFFF1F1F1) else Color.White),
+                                 onClick = { if (!locked) onDayChange(toggleDayCategory(day, type)) }
+                             ) {
+                                 Column(Modifier.fillMaxSize().padding(3.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+-                                    PersianText(symbol, fontSize = 18.sp, color = if (selected) Color(0xFF1556A6) else Color(0xFF426A6D))
+-                                    PersianText(type, fontSize = 10.sp, color = if (locked && !selected) Color.Gray else Color(0xFF1556A6), textAlign = TextAlign.Center, maxLines = 2)
++                                    PersianText(symbol, fontSize = 18.sp, color = if (isSelected) Color(0xFF1556A6) else Color(0xFF426A6D))
++                                    PersianText(type, fontSize = 10.sp, color = if (locked && !isSelected) Color.Gray else Color(0xFF1556A6), textAlign = TextAlign.Center, maxLines = 2)
+                                     if (locked) PersianText("غیرقابل تغییر", fontSize = 8.sp, color = Color.Gray)
+                                 }
+                             }
+                         }
+                     }
+
+@@ -2684,11 +2686,13 @@
+                         attendanceStatuses.forEach { status ->
+-                            val selected = if (status == "عادی") day.dayType == "کاری" && day.attendanceStatus in setOf("", "عادی") else day.attendanceStatus == status
++                            val isSelected = if (status == "عادی") day.dayType == "کاری" && day.attendanceStatus in setOf("", "عادی") else day.attendanceStatus == status
+                             val locked = status == "عادی" && day.dayType != "کاری"
+                             Card(
+-                                modifier = Modifier.weight(1f).height(58.dp).border(1.dp, if (selected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(9.dp)),
++                                modifier = Modifier.weight(1f).height(58.dp)
++                                    .testTag("attendance-status-$status")
++                                    .semantics { selected = isSelected }
++                                    .border(1.dp, if (isSelected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(9.dp)),
+                                 shape = RoundedCornerShape(9.dp),
+-                                colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFE3EEFF) else Color.White),
++                                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFE3EEFF) else Color.White),
+                                 onClick = { if (!locked) onDayChange(toggleAttendanceStatus(day, status)) }
+                             ) {
+                                 Box(Modifier.fillMaxSize().padding(2.dp), contentAlignment = Alignment.Center) {
