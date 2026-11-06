@@ -847,9 +847,10 @@ index 0000000..be9a176e2f7c4cbd681aa783f8e65f53f7ced6a0
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 --- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
 +++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
-@@ -45,6 +45,7 @@
+@@ -45,6 +45,8 @@
  import androidx.compose.ui.platform.testTag
 +import androidx.compose.ui.semantics.selected
++import androidx.compose.ui.semantics.semantics
 
 @@ -2642,15 +2642,17 @@
                          dayTypes.forEach { (type, symbol) ->
