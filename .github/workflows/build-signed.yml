@@ -2,22 +2,23 @@ name: Build Signed VaghtNegar Hoor APK
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: ["Build and test VaghtNegar"]
+    types: [completed]
     branches: [main]
-    paths:
-      - '.github/overlays/v074-core.patch'
-      - '.github/overlays/daily-ui-flow.patch'
-      - '.github/workflows/build-signed.yml'
 
 permissions:
   contents: read
 
 jobs:
   release:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
+      - name: Checkout the exact tested commit
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Java 17
         uses: actions/setup-java@v6
@@ -132,7 +133,7 @@ jobs:
       - name: Upload signed release APK
         uses: actions/upload-artifact@v7
         with:
-          name: VaghtNegarHoor-SIGNED-APK
+          name: Morakh-v074-SIGNED-APK
           path: project/**/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
