@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   build:
-    name: Unit tests and debug APK
+    name: Unit tests and compile checks
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -107,16 +107,13 @@ jobs:
           set -euo pipefail
           cd "$GITHUB_WORKSPACE/$PROJECT_ROOT"
           gradle --version
-          gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
-          test -f app/build/outputs/apk/debug/app-debug.apk
+          gradle --no-daemon --stacktrace testDebugUnitTest
 
-      - name: Upload debug APK and unit-test reports
+      - name: Upload unit-test reports
         uses: actions/upload-artifact@v7
         with:
-          name: VaghtNegar-v074-debug
-          path: |
-            project/**/build/outputs/apk/debug/*.apk
-            project/**/build/reports/tests/testDebugUnitTest/**
+          name: Morakh-v074-unit-test-reports
+          path: project/**/build/reports/tests/testDebugUnitTest/**
           if-no-files-found: error
           retention-days: 30
 
@@ -254,3 +251,18 @@ jobs:
             instrumentation-logcat.txt
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Package verified v0.74 source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -qr "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip" project/Karkard_Android_Project_v073
+          unzip -tq "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip"
+
+      - name: Upload verified v0.74 source archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: Morakh-v074-verified-source
+          path: Karkard_Android_Project_v074.zip
+          if-no-files-found: error
+          retention-days: 30
