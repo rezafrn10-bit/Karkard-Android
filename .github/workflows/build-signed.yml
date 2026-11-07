@@ -2,6 +2,12 @@ name: Build Signed VaghtNegar Hoor APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/overlays/v074-core.patch'
+      - '.github/overlays/daily-ui-flow.patch'
+      - '.github/workflows/build-signed.yml'
 
 permissions:
   contents: read
@@ -49,6 +55,13 @@ jobs:
           unzip -tq Karkard_Android_Project_v0731.zip
           mkdir -p project
           unzip -q Karkard_Android_Project_v0731.zip -d project
+          command -v patch
+          echo "Applying v0.74 core patch."
+          (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/v074-core.patch")
+          (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/v074-core.patch")
+          echo "Applying UI regression and calendar-policy overlay."
+          (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
+          (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
 
           # The ZIP may contain the project at its root or inside a versioned
           # wrapper directory (for example, v052work/). Find the actual Gradle root.
@@ -67,6 +80,9 @@ jobs:
           fi
 
           echo "Detected Gradle project root: $project_root"
+          grep -q 'versionCode = 76' "$project_root/app/build.gradle.kts"
+          grep -q 'versionName = "0.74.0"' "$project_root/app/build.gradle.kts"
+          echo "Verified app version 0.74.0 / versionCode 76."
           echo "PROJECT_ROOT=$project_root" >> "$GITHUB_ENV"
 
       - name: Restore private signing key
