@@ -7,12 +7,14 @@ on:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
       - '.github/overlays/daily-ui-flow.patch'
+      - '.github/overlays/v074-core.patch'
       - '.github/scripts/run-android-instrumentation.sh'
   pull_request:
     paths:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
       - '.github/overlays/daily-ui-flow.patch'
+      - '.github/overlays/v074-core.patch'
 
 permissions:
   contents: read
@@ -73,8 +75,13 @@ jobs:
             exit 1
           fi
           echo "Detected Gradle project root: $project_root"
-          echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
           command -v patch
+          echo "Applying v0.74 core patch."
+          (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/v074-core.patch")
+          (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/v074-core.patch")
+          grep -q 'versionCode = 76' "$project_root/app/build.gradle.kts"
+          grep -q 'versionName = "0.74.0"' "$project_root/app/build.gradle.kts"
+          echo "Applying UI regression and calendar-policy overlay."
           (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           test_file="$(find project -type f -name 'DailyUiFlowInstrumentedTest.kt' -print -quit)"
@@ -106,7 +113,7 @@ jobs:
       - name: Upload debug APK and unit-test reports
         uses: actions/upload-artifact@v7
         with:
-          name: VaghtNegar-v0731-debug
+          name: VaghtNegar-v074-debug
           path: |
             project/**/build/outputs/apk/debug/*.apk
             project/**/build/reports/tests/testDebugUnitTest/**
