@@ -256,7 +256,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          zip -qr "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip" project/Karkard_Android_Project_v073
+          (cd project && zip -qr "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip" Karkard_Android_Project_v073)
           unzip -tq "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip"
 
       - name: Upload verified v0.74 source archive
