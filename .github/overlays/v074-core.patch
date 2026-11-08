@@ -1,0 +1,552 @@
+diff --git a/Karkard_Android_Project_v073/app/build.gradle.kts b/Karkard_Android_Project_v073/app/build.gradle.kts
+--- a/Karkard_Android_Project_v073/app/build.gradle.kts
++++ b/Karkard_Android_Project_v073/app/build.gradle.kts
+@@ -32,8 +32,8 @@
+         applicationId = "ir.karkard.app"
+         minSdk = 26
+         targetSdk = 36
+-        versionCode = 74
+-        versionName = "0.73.1"
++        versionCode = 76
++        versionName = "0.74.0"
+         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+     }
+ 
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/CalendarWorkdayPolicy.kt
+@@ -13,10 +13,10 @@
+ ): WorkDay {
+     val calendarHoliday = isFriday || isOfficialHoliday
+     val resolvedType = when {
+-        // An explicitly declared exceptional closure is a user-owned override.
++        // Official dates are immutable: even a legacy/manual category cannot override them.
++        calendarHoliday -> "تعطیل رسمی"
++        // Preserve an explicitly selected special closure on ordinary calendar days.
+         hasManualDayType && current.dayType == "تعطیل خاص" -> "تعطیل خاص"
+-        // Official dates are immutable: even a legacy/manual "کاری" value cannot turn them into workdays.
+-        calendarHoliday -> "تعطیل رسمی"
+         hasManualDayType -> current.dayType
+         else -> "کاری"
+     }
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/WorkCalculationEngine.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/WorkCalculationEngine.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/WorkCalculationEngine.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/WorkCalculationEngine.kt
+@@ -47,19 +47,6 @@
+             )
+         }
+ 
+-        if (input.incomplete) {
+-            val knownLeave = if (!input.hourlyLeaveEnabled || target == 0) 0 else {
+-                val leave = merge(input.hourlyLeave)
+-                if (input.fixedMode) {
+-                    minOf(clippedUnion(leave, input.fixedStartMinute, input.fixedEndMinute), target)
+-                } else minOf(unionMinutes(leave), target)
+-            }
+-            return WorkCalculationResult(
+-                requiredMinutes = if (input.fixedMode) (target - knownLeave).coerceAtLeast(0) else target,
+-                hourlyLeaveMinutes = knownLeave,
+-                incomplete = true
+-            )
+-        }
+ 
+         val attendance = merge(input.attendance)
+         val leave = merge(input.hourlyLeave)
+@@ -89,6 +76,7 @@
+                 requiredMinutes = requiredAfterLeave,
+                 overtimeMinutes = overtime,
+                 hourlyLeaveMinutes = countedLeave,
++                incomplete = input.incomplete,
+                 recordedRequiredMinutes = recordedInWindow
+             )
+         }
+@@ -98,6 +86,7 @@
+             requiredMinutes = target,
+             overtimeMinutes = (netWork - target).coerceAtLeast(0),
+             hourlyLeaveMinutes = countedLeave,
++            incomplete = input.incomplete,
+             recordedRequiredMinutes = netWork.coerceAtMost(target)
+         )
+     }
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -72,7 +72,6 @@
+ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.launch
+ import kotlinx.coroutines.withContext
+-import kotlinx.coroutines.flow.first
+ 
+ 
+ private tailrec fun Context.findComponentActivity(): ComponentActivity? = when (this) {
+@@ -201,10 +200,6 @@
+     val incompleteCount: Int
+ )
+ 
+-// Monthly report items before the first day card: period picker, summary, tourahi,
+-// export controls, and the "کارت روز" section header.
+-private const val MONTHLY_REPORT_DAY_LIST_START_INDEX = 5
+-
+ private val workHolidayStatuses = setOf("تعطیل رسمی", "تعطیل خاص")
+ private val workLeaveStatuses = setOf("استحقاقی", "استعلاجی")
+ private val attendanceStatuses = listOf("عادی", "استحقاقی", "استعلاجی", "مأموریت")
+@@ -249,7 +244,7 @@
+     return day.copy(attendanceStatus = next)
+ }
+ 
+-class WorkDb(context: Context) : SQLiteOpenHelper(context, "karkard.db", null, 22) {
++class WorkDb(context: Context) : SQLiteOpenHelper(context, "karkard.db", null, 23) {
+     @Volatile private var settingsCache: Map<String, String>? = null
+ 
+     override fun onCreate(db: SQLiteDatabase) {
+@@ -343,10 +338,57 @@
+             db.execSQL("INSERT OR IGNORE INTO settings(key,value) VALUES('fixed_hours_enabled','1')")
+         }
+         if (oldVersion < 19) {
+-            // Version 0.63 replaces the embedded one-shift-per-day design with independent activity rows.
+-            // Previous shift records were test data and are deliberately not migrated into the new model.
+-            db.execSQL("UPDATE workdays SET shift_enabled=0, shift_start='', shift_end='', shift_start_date='', shift_end_date=''")
++            // Version 0.63 replaces the embedded one-shift-per-day design with
++            // independent activity rows. Preserve valid legacy shifts before clearing
++            // the obsolete columns; otherwise an upgrade from v0.43-v0.62 silently
++            // destroys user-entered shift records.
+             db.execSQL("CREATE TABLE IF NOT EXISTS work_sessions(id INTEGER PRIMARY KEY AUTOINCREMENT, start_date TEXT NOT NULL, start_time TEXT NOT NULL, end_date TEXT NOT NULL, end_time TEXT NOT NULL, note TEXT NOT NULL DEFAULT '')")
++            val legacyShifts = mutableListOf<WorkSession>()
++            val migratedLegacyShiftDates = mutableListOf<String>()
++            db.rawQuery(
++                "SELECT date,shift_start,shift_end,shift_start_date,shift_end_date FROM workdays WHERE shift_enabled=1",
++                null
++            ).use { cursor ->
++                while (cursor.moveToNext()) {
++                    val dayDate = cursor.getString(0).orEmpty()
++                    val startTime = cursor.getString(1).orEmpty()
++                    val endTime = cursor.getString(2).orEmpty()
++                    val startDate = cursor.getString(3).orEmpty().ifBlank { dayDate }
++                    val endDate = cursor.getString(4).orEmpty().ifBlank {
++                        defaultShiftEndDate(startDate, startTime, endTime)
++                    }
++                    val normalized = normalizeWorkSession(
++                        WorkSession(
++                            startDate = startDate,
++                            startTime = startTime,
++                            endDate = endDate,
++                            endTime = endTime
++                        )
++                    )
++                    if (normalized != null) {
++                        legacyShifts.add(normalized)
++                        migratedLegacyShiftDates.add(dayDate)
++                    }
++                }
++            }
++            legacyShifts.forEach { session ->
++                val values = ContentValues().apply {
++                    put("start_date", session.startDate)
++                    put("start_time", session.startTime)
++                    put("end_date", session.endDate)
++                    put("end_time", session.endTime)
++                    put("note", "")
++                }
++                db.insertOrThrow("work_sessions", null, values)
++            }
++            // Clear only rows whose valid shift was copied successfully. Keep malformed
++            // legacy values intact rather than silently destroying data that needs review.
++            migratedLegacyShiftDates.forEach { date ->
++                db.execSQL(
++                    "UPDATE workdays SET shift_enabled=0, shift_start='', shift_end='', shift_start_date='', shift_end_date='' WHERE date=?",
++                    arrayOf(date)
++                )
++            }
+             db.execSQL("INSERT OR IGNORE INTO settings(key,value) VALUES('fixed_weekday_start','07:00')")
+             db.execSQL("INSERT OR IGNORE INTO settings(key,value) VALUES('fixed_weekday_end','14:00')")
+             db.execSQL("INSERT OR IGNORE INTO settings(key,value) VALUES('fixed_thursday_start','07:00')")
+@@ -1542,10 +1584,9 @@
+     pairs.any { (start, end) -> start.isBlank() xor end.isBlank() ||
+         (start.isNotBlank() && end.isNotBlank() && intervalFrom(start, end) == null) }
+ 
+-private fun attendancePairs(day: WorkDay): List<Pair<String, String>> =
+-    if (day.fixedHoursMode) listOf(
+-        day.in1 to day.out1, day.in2 to day.out2, day.in3 to day.out3, day.in4 to day.out4
+-    ) else listOf(day.in1 to day.out1)
++private fun attendancePairs(day: WorkDay): List<Pair<String, String>> = listOf(
++    day.in1 to day.out1, day.in2 to day.out2, day.in3 to day.out3, day.in4 to day.out4
++)
+ 
+ private fun hourlyLeavePairs(day: WorkDay): List<Pair<String, String>> =
+     if (!day.hourlyLeaveEnabled) emptyList() else if (day.fixedHoursMode) listOf(
+@@ -2743,13 +2779,12 @@
+                     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                         PersianText(if (day.fixedHoursMode) "ساعت کار روزانه • ساعت کار ثابت" else "ساعت کار روزانه • ساعت کار شناور", modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF073B45), textAlign = TextAlign.Start)
+                         PersianText(
+-                            if (day.fixedHoursMode) "ورود و خروج اول برای ساعت موظفی است؛ خروج می‌تواند پس از پایان موظفی باشد، مگر اینکه بازه‌های اضافه‌کاری دوم تا چهارم ثبت شوند." else "در این حالت فقط یک ورود و خروج ثبت می‌شود و حداکثر چهار بازه مرخصی ساعتی از کارکرد کسر می‌شود.",
++                            if (day.fixedHoursMode) "ورود و خروج اول برای ساعت موظفی است؛ خروج می‌تواند پس از پایان موظفی باشد، مگر اینکه بازه‌های اضافه‌کاری دوم تا چهارم ثبت شوند." else "در حالت شناور می‌توانید چند بازه کامل ورود و خروج ثبت کنید؛ همه بازه‌های معتبر در جمع کارکرد لحاظ می‌شوند.",
+                             fontSize = 10.sp, color = Color(0xFF52708F), lineHeight = 14.sp
+                         )
+                         Divider(color = Color(0xFFC8DCD9))
+                         CompactTimePairRow("۱", "ورود", day.in1, "خروج", day.out1, { onDayChange(day.copy(in1=it)) }, { onDayChange(day.copy(out1=it)) }, fieldFontSize = 13)
+-                        if (day.fixedHoursMode) {
+-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
++                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                 OutlinedButton(
+                                     onClick = {
+                                         showSecondWorkPair = !showSecondWorkPair
+@@ -2775,18 +2810,17 @@
+                             }
+                             if (showSecondWorkPair) {
+                                 Divider(color = Color(0xFFC8DCD9))
+-                                CompactTimePairRow("۲", "ورود اضافه‌کار", day.in2, "خروج", day.out2, { onDayChange(day.copy(in2=it)) }, { onDayChange(day.copy(out2=it)) }, fieldFontSize = 12)
++                                CompactTimePairRow("۲", if (day.fixedHoursMode) "ورود اضافه‌کار" else "ورود", day.in2, "خروج", day.out2, { onDayChange(day.copy(in2=it)) }, { onDayChange(day.copy(out2=it)) }, fieldFontSize = 12)
+                             }
+                             if (showSecondWorkPair && showThirdWorkPair) {
+                                 Divider(color = Color(0xFFC8DCD9))
+-                                CompactTimePairRow("۳", "ورود اضافه‌کار", day.in3, "خروج", day.out3, { onDayChange(day.copy(in3=it)) }, { onDayChange(day.copy(out3=it)) }, fieldFontSize = 12)
++                                CompactTimePairRow("۳", if (day.fixedHoursMode) "ورود اضافه‌کار" else "ورود", day.in3, "خروج", day.out3, { onDayChange(day.copy(in3=it)) }, { onDayChange(day.copy(out3=it)) }, fieldFontSize = 12)
+                             }
+                             if (showSecondWorkPair && showThirdWorkPair && showFourthWorkPair) {
+                                 Divider(color = Color(0xFFC8DCD9))
+-                                CompactTimePairRow("۴", "ورود اضافه‌کار", day.in4, "خروج", day.out4, { onDayChange(day.copy(in4=it)) }, { onDayChange(day.copy(out4=it)) }, fieldFontSize = 12)
++                                CompactTimePairRow("۴", if (day.fixedHoursMode) "ورود اضافه‌کار" else "ورود", day.in4, "خروج", day.out4, { onDayChange(day.copy(in4=it)) }, { onDayChange(day.copy(out4=it)) }, fieldFontSize = 12)
+                             }
+-                            PersianText("بازه‌های دوم تا چهارم فقط از پایان موظفی تا ۲۳:۵۹ مجاز هستند.", fontSize = 10.sp, color = OvertimeGreenText)
+-                        }
++                        PersianText(if (day.fixedHoursMode) "بازه‌های دوم تا چهارم فقط از پایان موظفی تا ۲۳:۵۹ مجاز هستند." else "در حالت شناور، همه بازه‌های کامل و معتبر در کارکرد روزانه جمع می‌شوند.", fontSize = 10.sp, color = OvertimeGreenText)
+                     }
+                 }
+             }
+@@ -2841,7 +2875,7 @@
+         }
+         if (isIncompleteDay(day, db)) item {
+             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)), modifier = Modifier.fillMaxWidth().border(1.dp, Color(0xFFFFCC80), RoundedCornerShape(9.dp))) {
+-                PersianText("اطلاعات ناقص است؛ تا تکمیل ساعت خروج یا بازه‌های نیمه‌تمام، این روز در جمع کارکرد قطعی محاسبه نمی‌شود.", modifier = Modifier.fillMaxWidth().padding(9.dp), fontSize = 11.sp, color = Color(0xFF9A5700), textAlign = TextAlign.Center)
++                PersianText("اطلاعات ناقص است؛ فقط بازه‌های کامل و معتبر در جمع کارکرد محاسبه می‌شوند و بازهٔ ناقص تا زمان تکمیل کنار گذاشته می‌شود.", modifier = Modifier.fillMaxWidth().padding(9.dp), fontSize = 11.sp, color = Color(0xFF9A5700), textAlign = TextAlign.Center)
+             }
+         }
+         item {
+@@ -3739,7 +3773,6 @@
+         selectionMode = false
+         selectedCardIds = emptySet()
+     }
+-    val reportListState = androidx.compose.foundation.lazy.rememberLazyListState()
+     // Resolve the device date on every recomposition; the report may stay open over midnight.
+     val todayJalali = jalaliDateString(LocalDate.now())
+     val monthKey = "%04d-%02d".format(year, monthNumber)
+@@ -3808,24 +3841,7 @@
+     val entitledCount = (rawEntitledCount - effectiveDeductionTotal).coerceAtLeast(0)
+     val tourahiCount = savedDeductionTotal
+ 
+-    val todayReportDayIndex = remember(reportDays, todayJalali) {
+-        if (annual) -1 else reportDays.indexOfFirst { it.date == todayJalali }
+-    }
+-    LaunchedEffect(year, monthNumber, annual, refresh, todayJalali, todayReportDayIndex) {
+-        if (!annual && todayReportDayIndex >= 0) {
+-            // Monthly day cards are individual keyed LazyColumn items. Scroll directly
+-            // to today's item instead of asking a child inside one giant Column to
+-            // calculate a BringIntoView request (which is timing-sensitive on newer OSes).
+-            val targetIndex = MONTHLY_REPORT_DAY_LIST_START_INDEX + todayReportDayIndex
+-            // Wait for the lazy list to publish its complete item count; a single
+-            // frame delay is not a reliable layout-ready signal on every OS/device.
+-            snapshotFlow { reportListState.layoutInfo.totalItemsCount }
+-                .first { totalItems -> totalItems > targetIndex }
+-            reportListState.scrollToItem(targetIndex)
+-        }
+-    }
+     LazyColumn(
+-        state = reportListState,
+         modifier = modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 5.dp),
+         verticalArrangement = Arrangement.spacedBy(8.dp),
+         contentPadding = PaddingValues(bottom = 14.dp)
+@@ -4327,7 +4343,7 @@
+ 
+             if (isIncompleteDay(day, db)) {
+                 Surface(color = Color(0xFFFFF4DF), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
+-                    PersianText("اطلاعات ناقص است؛ این روز تا تکمیل بازه‌های ناقص در جمع قطعی کارکرد محاسبه نمی‌شود.", modifier = Modifier.padding(8.dp), fontSize = 11.sp, color = Color(0xFF8A5700), textAlign = TextAlign.Center)
++                    PersianText("اطلاعات ناقص است؛ بازه‌های کامل و معتبر این روز محاسبه می‌شوند؛ بازه‌های ناقص تا زمان تکمیل کنار گذاشته می‌شوند.", modifier = Modifier.padding(8.dp), fontSize = 11.sp, color = Color(0xFF8A5700), textAlign = TextAlign.Center)
+                 }
+             }
+             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+@@ -4870,7 +4886,7 @@
+         }
+     }
+     val footer=headerTop+headerH+rowH*allRows.size+12f
+-    label("مبنای موظفی: روزهای کاری طبق حالت ثبت‌شده • فعالیت‌ها بر اساس ماه شروع • اطلاعات ناقص در جمع قطعی کارکرد وارد نمی‌شوند",right,footer,(right-left).toInt(),9.0f,grey)
++    label("مبنای موظفی: روزهای کاری طبق حالت ثبت‌شده • فعالیت‌ها بر اساس ماه شروع • بازه‌های ناقص در محاسبه وارد نمی‌شوند",right,footer,(right-left).toInt(),9.0f,grey)
+     fill(left,footer+20f,right,footer+22f,gold)
+     document.finishPage(page)
+     val bytes=java.io.ByteArrayOutputStream()
+@@ -5333,7 +5349,7 @@
+                             HelpNode("ثبت ساعت ورود و خروج", body = "در حالت ساعت کار ثابت، بازه اول برای حضور اصلی است و بازه‌های دوم تا چهارم برای اضافه‌کاری پس از پایان ساعت ثابت هستند. اگر خروجت مشخص نیست، فقط ساعت ورود را ثبت و دکمه «ذخیره ورود (ثبت خروج بعداً)» را بزن. بعداً همان روز را باز کن، ساعت خروج را وارد و دوباره ذخیره کن. در حالت شناور فقط یک بازه ورود و خروج برای حضور روز وجود دارد. ساعت‌ها را با چهار رقم نیز می‌توانی وارد کنی؛ مانند 0700 که به 07:00 تبدیل می‌شود."),
+                             HelpNode("ثبت مرخصی ساعتی", body = "ابتدا کلید مرخصی ساعتی را روشن کن. در حالت ثابت حداکثر سه بازه مرخصی و فقط داخل بازه ساعت کار ثابت مجاز است؛ مرخصی در محدوده اضافه‌کاری پذیرفته نمی‌شود. در حالت شناور حداکثر چهار بازه قابل ثبت است و مرخصی می‌تواند در هر ساعت از روز باشد، به شرط آنکه داخل بازه حضور ثبت‌شده قرار بگیرد. در حالت شناور، مجموع مرخصی قابل کسر از کارکرد از موظفی همان روز بیشتر نمی‌شود."),
+                             HelpNode("فعالیت کاری (شیفت)", body = "این کارت برای ثبت بازه‌های فعالیت یا شیفت جدا از ورود و خروج روزانه است. تاریخ و ساعت شروع و پایان را وارد کن؛ برای شیفت شب، تاریخ پایان را روز بعد قرار بده. مقادیر پیش‌فرض کارت، تاریخ شروع روز انتخاب‌شده و ساعت 17:00 تا ساعت 07:00 روز بعد است. عنوان فعالیت اختیاری است. هر فعالیت را می‌توانی ذخیره، ویرایش یا حذف کنی. تعداد و مدت فعالیت در گزارش‌ها جداگانه نمایش داده می‌شود و زمان هم‌پوشان با حضور عادی نباید دوباره به کل کارکرد افزوده شود."),
+-                            HelpNode("ذخیره اطلاعات ناقص", body = "در حالت ساعت کار ثابت، ثبت ورود اول بدون خروج مجاز است. با ذخیره این وضعیت، روز با عبارت «اطلاعات ناقص است» مشخص می‌شود. تا زمانی که خروج یا بازه ناقص تکمیل نشده، آن روز در جمع قطعی کل کارکرد و اضافه‌کاری وارد نمی‌شود. پس از خروج، به همان تاریخ برگرد، ساعت خروج را وارد و ذخیره کن تا وضعیت ناقص برطرف شود. در حالت شناور برای ثبت حضور، ورود و خروج باید کامل باشند."),
++                            HelpNode("ذخیره اطلاعات ناقص", body = "در حالت ساعت کار ثابت، ثبت ورود اول بدون خروج مجاز است. با ذخیره این وضعیت، روز با عبارت «اطلاعات ناقص است» مشخص می‌شود. تا زمان تکمیل، فقط همان بازهٔ ناقص از محاسبه کنار گذاشته می‌شود؛ بازه‌های کامل و معتبر دیگر همچنان در کارکرد ثبت می‌شوند. پس از خروج، به همان تاریخ برگرد، ساعت خروج را وارد و ذخیره کن تا وضعیت ناقص برطرف شود. در حالت شناور برای ثبت حضور، ورود و خروج باید کامل باشند."),
+                             HelpNode("یادداشت، ذخیره و حذف روز", body = "در کارت یادداشت روز می‌توانی توضیح اختیاری بنویسی. پس از تغییر اطلاعات، دکمه ذخیره اطلاعات روز را بزن. برای حذف اطلاعات همان روز، دکمه حذف اطلاعات روز را انتخاب و پیام تأیید را بررسی کن. حذف روز با حذف مناسبت اصلی تقویم یا یادآورهای مستقل تفاوت دارد؛ داده‌های تقویم و یادآورها با حذف رکورد کارکرد پاک نمی‌شوند.")
+                         )
+                     ),
+@@ -5389,7 +5405,7 @@
+                     HelpNode("موظفی مقرر", body = "موظفی مقرر مقدار کار مورد انتظار در روز، ماه یا سال است. در حالت ثابت از اختلاف ساعت شروع و پایان بازه ثابت به دست می‌آید. در حالت شناور، مقدار آن از ساعت موظفی قابل تنظیم استفاده می‌کند. در روزهای تعطیل یا روزهایی که طبق قواعد برنامه موظفی ندارند، مقدار موظفی می‌تواند صفر باشد."),
+                     HelpNode("موظفی ثبتی", body = "موظفی ثبتی بخش مؤثر حضور ثبت‌شده برای رسیدن به موظفی است و اضافه‌کاری خارج از بازه موظفی نباید کمبود حضور در محدوده موظفی را پنهان کند. مقایسه موظفی مقرر و موظفی ثبتی نشان می‌دهد چه مقدار از زمان مورد انتظار واقعاً در ساعات مربوط ثبت شده است."),
+                     HelpNode("مرخصی و اضافه‌کاری در حالت شناور", body = "در حالت شناور، مدت مرخصی ثبت‌شده از حضور کسر می‌شود، اما سقف کسر برابر موظفی روز است. مثال: اگر حضور 16 ساعت و 30 دقیقه، مرخصی ثبت‌شده 8 ساعت و موظفی 7 ساعت باشد، فقط 7 ساعت کسر می‌شود؛ کارکرد خالص 9 ساعت و 30 دقیقه و اضافه‌کاری 2 ساعت و 30 دقیقه خواهد بود."),
+-                    HelpNode("وضعیت اطلاعات ناقص", body = "اگر یک بازه شروع داشته باشد ولی پایان آن ثبت نشده باشد، روز ناقص محسوب می‌شود. روز ناقص در کارت روز، گزارش ماه و گزارش سال علامت‌گذاری می‌شود و مدت نامعلوم وارد جمع قطعی کارکرد و اضافه‌کاری نمی‌شود. بعد از تکمیل ساعت پایان، اطلاعات را دوباره ذخیره کن."),
++                    HelpNode("وضعیت اطلاعات ناقص", body = "اگر یک بازه شروع داشته باشد ولی پایان آن ثبت نشده باشد، روز ناقص محسوب می‌شود. روز ناقص در کارت روز، گزارش ماه و گزارش سال علامت‌گذاری می‌شود؛ فقط بازهٔ ناقص وارد محاسبه نمی‌شود و بازه‌های کامل همان روز محاسبه می‌شوند. بعد از تکمیل ساعت پایان، اطلاعات را دوباره ذخیره کن."),
+                     HelpNode("تعداد و مدت فعالیت کاری", body = "هر فعالیت کاری یا شیفت با تاریخ و ساعت شروع و پایان مستقل ذخیره می‌شود. تعداد فعالیت براساس تعداد رکوردهای معتبر و جمع مدت براساس بازه‌های زمانی محاسبه می‌شود. فعالیتی که از نیمه‌شب یا پایان ماه عبور می‌کند بر اساس تاریخ شروع خود به ماه مربوط منتسب می‌شود.")
+                 )
+             ),
+
+diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
+--- a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
++++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/CalendarWorkdayPolicyTest.kt
+@@ -177,4 +177,54 @@
+         assertTrue(isHolidayWorkDay(WorkDay(date = "1405-02-12", dayType = "تعطیل خاص")))
+     }
+ 
++    @Test fun officialEidAlAdha1405CannotBeDowngradedToSpecialOrWorkingDay() {
++        val eid = Calendar1405.holidays.single { it.first == "1405-03-06" }
++        assertEquals("عید سعید قربان", eid.second)
++        val manuallySpecial = WorkDay(
++            date = eid.first,
++            dayType = "تعطیل خاص",
++            dayTypeManual = true,
++            attendanceStatus = "عادی"
++        )
++        val resolved = resolveCalendarWorkdayStatus(
++            current = manuallySpecial,
++            hasManualDayType = true,
++            isFriday = false,
++            isOfficialHoliday = true
++        )
++        assertEquals("تعطیل رسمی", resolved.dayType)
++        assertFalse(resolved.dayTypeManual)
++        assertEquals("", resolved.attendanceStatus)
++        assertTrue(isCalendarDefaultHoliday(resolved, isFriday = false, isOfficialHoliday = true))
++    }
++
++    @Test fun manuallySelectedSpecialHolidaySurvivesRefreshOnAnOrdinaryDate() {
++        val special = WorkDay(date = "1405-02-12", dayType = "تعطیل خاص", dayTypeManual = true)
++        val resolved = resolveCalendarWorkdayStatus(special, true, false, false)
++        assertEquals("تعطیل خاص", resolved.dayType)
++        assertTrue(resolved.dayTypeManual)
++    }
++
++
++    @Test fun officialHolidayEditorCannotChangeDayTypeOrKeepNormalAttendance() {
++        val current = WorkDay(date = "1405-03-06", dayType = "تعطیل رسمی")
++        val attempted = current.copy(
++            dayType = "تعطیل خاص",
++            dayTypeManual = true,
++            attendanceStatus = "عادی"
++        )
++        val enforced = enforceCalendarDayTypePolicy(current, attempted, isCalendarHoliday = true)
++        assertEquals("تعطیل رسمی", enforced.dayType)
++        assertFalse(enforced.dayTypeManual)
++        assertEquals("", enforced.attendanceStatus)
++    }
++
++    @Test fun manualSpecialHolidayRemainsEditableOnOrdinaryDate() {
++        val current = WorkDay(date = "1405-02-12", dayType = "کاری")
++        val attempted = current.copy(dayType = "تعطیل خاص")
++        val enforced = enforceCalendarDayTypePolicy(current, attempted, isCalendarHoliday = false)
++        assertEquals("تعطیل خاص", enforced.dayType)
++        assertTrue(enforced.dayTypeManual)
++    }
++
+ }
+
+diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/WorkCalculationEngineTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/WorkCalculationEngineTest.kt
+--- a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/WorkCalculationEngineTest.kt
++++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/WorkCalculationEngineTest.kt
+@@ -92,12 +92,12 @@
+         assertEquals(2 * 60, result.overtimeMinutes)
+     }
+ 
+-    @Test fun incompleteInformationDoesNotBecomeConfirmedWorkTime() {
++    @Test fun incompletePairDoesNotEraseOtherCompleteAttendancePairs() {
+         val result = WorkCalculationEngine.calculate(
+             WorkCalculationInput(
+                 attendance = listOf(WorkMinuteInterval(7 * 60, 12 * 60)),
+                 hourlyLeave = emptyList(),
+-                fixedMode = true,
++                fixedMode = false,
+                 targetMinutes = 7 * 60,
+                 fixedStartMinute = 7 * 60,
+                 fixedEndMinute = 14 * 60,
+@@ -105,7 +105,7 @@
+             )
+         )
+         assertTrue(result.incomplete)
+-        assertEquals(0, result.workedMinutes)
++        assertEquals(5 * 60, result.workedMinutes)
+         assertEquals(0, result.overtimeMinutes)
+         assertEquals(7 * 60, result.requiredMinutes)
+     }
+@@ -144,4 +144,34 @@
+         assertEquals(6 * 60, result.recordedRequiredMinutes)
+     }
+ 
++    @Test fun flexibleModeCountsThreeAttendancePairsLikeLegacyBehavior() {
++        val result = WorkCalculationEngine.calculate(WorkCalculationInput(
++            attendance = listOf(WorkMinuteInterval(7*60, 10*60), WorkMinuteInterval(11*60, 13*60), WorkMinuteInterval(14*60, 17*60)),
++            hourlyLeave = emptyList(), fixedMode = false, targetMinutes = 7*60,
++            fixedStartMinute = 7*60, fixedEndMinute = 14*60, hourlyLeaveEnabled = false
++        ))
++        assertEquals(8*60, result.workedMinutes)
++        assertEquals(60, result.overtimeMinutes)
++    }
++
++    @Test fun flexibleModeCountsFourthAttendancePair() {
++        val result = WorkCalculationEngine.calculate(WorkCalculationInput(
++            attendance = listOf(WorkMinuteInterval(7*60, 9*60), WorkMinuteInterval(10*60, 12*60), WorkMinuteInterval(13*60, 15*60), WorkMinuteInterval(16*60, 17*60)),
++            hourlyLeave = emptyList(), fixedMode = false, targetMinutes = 7*60,
++            fixedStartMinute = 7*60, fixedEndMinute = 14*60, hourlyLeaveEnabled = false
++        ))
++        assertEquals(7*60, result.workedMinutes)
++        assertEquals(0, result.overtimeMinutes)
++    }
++
++    @Test fun incompleteLeaveDoesNotEraseConfirmedAttendance() {
++        val result = WorkCalculationEngine.calculate(WorkCalculationInput(
++            attendance = listOf(WorkMinuteInterval(7*60, 15*60)),
++            hourlyLeave = emptyList(), fixedMode = false, targetMinutes = 7*60,
++            fixedStartMinute = 7*60, fixedEndMinute = 14*60, incomplete = true
++        ))
++        assertTrue(result.incomplete)
++        assertEquals(8*60, result.workedMinutes)
++    }
++
+ }
+
+diff --git a/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/WorkDbPersistenceInstrumentedTest.kt b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/WorkDbPersistenceInstrumentedTest.kt
+--- a/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/WorkDbPersistenceInstrumentedTest.kt
++++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/WorkDbPersistenceInstrumentedTest.kt
+@@ -80,4 +80,105 @@
+             reopened.close()
+         }
+     }
++
++
++    @Test
++    fun version17EmbeddedNightShiftMigratesWithoutLosingDailyAttendance() {
++        context.deleteDatabase("karkard.db")
++        val legacyHelper = object : android.database.sqlite.SQLiteOpenHelper(
++            context, "karkard.db", null, 17
++        ) {
++            override fun onCreate(db: android.database.sqlite.SQLiteDatabase) {
++                db.execSQL("""CREATE TABLE workdays(
++                    date TEXT PRIMARY KEY, in1 TEXT, out1 TEXT, in2 TEXT, out2 TEXT,
++                    in3 TEXT, out3 TEXT, note TEXT, day_type TEXT DEFAULT 'کاری',
++                    overtime_override TEXT DEFAULT '', shift_enabled INTEGER DEFAULT 0,
++                    shift_start TEXT DEFAULT '', shift_end TEXT DEFAULT '',
++                    shift_start_date TEXT DEFAULT '', shift_end_date TEXT DEFAULT '',
++                    holiday_in TEXT DEFAULT '', holiday_out TEXT DEFAULT '',
++                    leave1_start TEXT DEFAULT '', leave1_end TEXT DEFAULT '',
++                    leave2_start TEXT DEFAULT '', leave2_end TEXT DEFAULT '',
++                    leave_enabled INTEGER DEFAULT 0, extra_day_types TEXT DEFAULT '')""")
++                db.execSQL("CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)")
++                db.execSQL("CREATE TABLE holidays(date TEXT PRIMARY KEY, title TEXT NOT NULL)")
++                db.execSQL("CREATE TABLE official_holidays(date TEXT PRIMARY KEY, title TEXT NOT NULL, year INTEGER NOT NULL)")
++                db.execSQL("CREATE TABLE holiday_sync(year INTEGER PRIMARY KEY, synced_at INTEGER NOT NULL)")
++                db.execSQL("CREATE TABLE calendar_events(date TEXT PRIMARY KEY, title TEXT NOT NULL, year INTEGER NOT NULL)")
++                db.execSQL("INSERT INTO settings(key,value) VALUES('workday_hours','07:00')")
++                db.execSQL("INSERT INTO settings(key,value) VALUES('thursday_hours_value','05:00')")
++            }
++            override fun onUpgrade(
++                db: android.database.sqlite.SQLiteDatabase,
++                oldVersion: Int,
++                newVersion: Int
++            ) = Unit
++        }
++        val legacyDb = legacyHelper.writableDatabase
++        try {
++            val values = android.content.ContentValues().apply {
++                put("date", "1405-02-12")
++                put("in1", "07:00")
++                put("out1", "14:00")
++                put("day_type", "کاری")
++                put("shift_enabled", 1)
++                put("shift_start", "17:00")
++                put("shift_end", "07:00")
++                put("shift_start_date", "1405-02-12")
++                put("shift_end_date", "1405-02-13")
++            }
++            legacyDb.insertOrThrow("workdays", null, values)
++        } finally {
++            legacyHelper.close()
++        }
++
++        val migrated = WorkDb(context)
++        try {
++            val day = migrated.getDay("1405-02-12")
++            assertEquals("07:00", day.in1)
++            assertEquals("14:00", day.out1)
++            assertFalse(day.shiftEnabled)
++
++            val sessions = migrated.workSessionsStartingOn("1405-02-12")
++            assertEquals(1, sessions.size)
++            assertEquals("1405-02-12", sessions.single().startDate)
++            assertEquals("17:00", sessions.single().startTime)
++            assertEquals("1405-02-13", sessions.single().endDate)
++            assertEquals("07:00", sessions.single().endTime)
++        } finally {
++            migrated.close()
++        }
++    }
++
++
++
++    @Test
++    fun independentShiftActivitySurvivesDatabaseReopen() {
++        val expected = WorkSession(
++            startDate = "1405-02-12",
++            startTime = "17:00",
++            endDate = "1405-02-13",
++            endTime = "07:00",
++            note = "شیفت شب"
++        )
++        val firstOpen = WorkDb(context)
++        try {
++            val id = firstOpen.saveWorkSession(expected)
++            assertTrue(id > 0L)
++        } finally {
++            firstOpen.close()
++        }
++
++        val reopened = WorkDb(context)
++        try {
++            val saved = reopened.workSessionsStartingOn("1405-02-12").single()
++            assertEquals(expected.startDate, saved.startDate)
++            assertEquals(expected.startTime, saved.startTime)
++            assertEquals(expected.endDate, saved.endDate)
++            assertEquals(expected.endTime, saved.endTime)
++            assertEquals(expected.note, saved.note)
++        } finally {
++            reopened.close()
++        }
++    }
++
+ }
+
+diff --git a/Karkard_Android_Project_v073/RELEASE_NOTES_v074_FA.md b/Karkard_Android_Project_v073/RELEASE_NOTES_v074_FA.md
+new file mode 100644
+--- /dev/null
++++ b/Karkard_Android_Project_v073/RELEASE_NOTES_v074_FA.md
+@@ -0,0 +1,18 @@
++# نسخهٔ ۰٫۷۴٫۰ — تثبیت موتور ثبت و حفظ شیفت‌های قدیمی
++
++## حفظ رفتار ثبت کارکرد
++- مسیر ثبت روزانه، ذخیرهٔ اتمیک SQLite، تأیید مجدد داده پس از Commit و بارگذاری مجدد روی نخ IO از نسخهٔ ۰٫۷۳٫۲ حفظ شد.
++- موتور محاسبات ساعت ثابت و شناور و اصلاح محاسبهٔ چهار بازهٔ نسخهٔ ۰٫۷۳٫۲ بدون بازنویسی حفظ شد.
++- فعالیت‌های کاری مستقل (شیفت) و انتساب گزارش‌ها بر اساس تاریخ شروع همچنان از جدول `work_sessions` استفاده می‌کنند.
++
++## اصلاح مهاجرت شیفت نسخه‌های قدیمی
++- در نسخه‌های ۰٫۴۳ تا ۰٫۶۲ شیفت در ستون‌های همان رکورد روز ذخیره می‌شد.
++- مهاجرت قبلی به نسخهٔ ۰٫۶۳ این فیلدها را بدون انتقال پاک می‌کرد.
++- اکنون هنگام ارتقا از پایگاه‌دادهٔ نسخهٔ ۱۷ یا ۱۸، شیفت‌های معتبر ابتدا به‌صورت رکوردهای مستقل `work_sessions` منتقل می‌شوند و فقط پس از موفقیت انتقال، ستون‌های قدیمی پاک می‌شوند.
++- اطلاعات ورود/خروج روزانه و سایر فیلدهای کارکرد دست‌نخورده می‌مانند.
++- آزمون Instrumentation برای ارتقای واقعی SQLite از schema نسخهٔ ۱۷ و حفظ شیفت شبانه اضافه شد.
++
++## نسخه و پایگاه داده
++- `versionName = 0.74.0`
++- `versionCode = 76` (بالاتر از کد ۷۵ نسخهٔ ۰٫۷۳٫۲ برای نصب به‌روزرسانی)
++- نسخهٔ schema پایگاه داده: ۲۳

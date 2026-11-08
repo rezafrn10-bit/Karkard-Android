@@ -7,19 +7,21 @@ on:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
       - '.github/overlays/daily-ui-flow.patch'
+      - '.github/overlays/v074-core.patch'
       - '.github/scripts/run-android-instrumentation.sh'
   pull_request:
     paths:
       - 'Karkard_Android_Project_v0731.zip'
       - '.github/workflows/build.yml'
       - '.github/overlays/daily-ui-flow.patch'
+      - '.github/overlays/v074-core.patch'
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Unit tests and debug APK
+    name: Unit tests and compile checks
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -73,8 +75,13 @@ jobs:
             exit 1
           fi
           echo "Detected Gradle project root: $project_root"
-          echo "Applying UI-test overlay from the Gradle project root (strip two path components)."
           command -v patch
+          echo "Applying v0.74 core patch."
+          (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/v074-core.patch")
+          (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/v074-core.patch")
+          grep -q 'versionCode = 76' "$project_root/app/build.gradle.kts"
+          grep -q 'versionName = "0.74.0"' "$project_root/app/build.gradle.kts"
+          echo "Applying UI regression and calendar-policy overlay."
           (cd project && patch --dry-run --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           (cd project && patch --batch --forward -p1 -i "$GITHUB_WORKSPACE/.github/overlays/daily-ui-flow.patch")
           test_file="$(find project -type f -name 'DailyUiFlowInstrumentedTest.kt' -print -quit)"
@@ -100,16 +107,13 @@ jobs:
           set -euo pipefail
           cd "$GITHUB_WORKSPACE/$PROJECT_ROOT"
           gradle --version
-          gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
-          test -f app/build/outputs/apk/debug/app-debug.apk
+          gradle --no-daemon --stacktrace testDebugUnitTest
 
-      - name: Upload debug APK and unit-test reports
+      - name: Upload unit-test reports
         uses: actions/upload-artifact@v7
         with:
-          name: VaghtNegar-v0731-debug
-          path: |
-            project/**/build/outputs/apk/debug/*.apk
-            project/**/build/reports/tests/testDebugUnitTest/**
+          name: Morakh-v074-unit-test-reports
+          path: project/**/build/reports/tests/testDebugUnitTest/**
           if-no-files-found: error
           retention-days: 30
 
@@ -247,3 +251,18 @@ jobs:
             instrumentation-logcat.txt
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Package verified v0.74 source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd project && zip -qr "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip" Karkard_Android_Project_v073)
+          unzip -tq "$GITHUB_WORKSPACE/Karkard_Android_Project_v074.zip"
+
+      - name: Upload verified v0.74 source archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: Morakh-v074-verified-source
+          path: Karkard_Android_Project_v074.zip
+          if-no-files-found: error
+          retention-days: 30
