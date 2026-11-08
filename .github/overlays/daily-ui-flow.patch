@@ -16,15 +16,23 @@ new file mode 100644
 index 0000000..0aeda6d
 --- /dev/null
 +++ b/Karkard_Android_Project_v073/app/src/androidTest/java/ir/karkard/app/DailyUiFlowInstrumentedTest.kt
-@@ -0,0 +1,198 @@
+@@ -0,0 +1,278 @@
 +package ir.karkard.app
 +
 +import android.content.Context
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.graphics.toPixelMap
++import androidx.compose.ui.test.captureToImage
 +import android.util.Log
 +import androidx.compose.ui.test.assertIsDisplayed
++import androidx.compose.ui.test.assertIsSelected
++import org.junit.Assert.assertTrue
 +import androidx.compose.ui.test.assertTextEquals
++import androidx.compose.ui.test.hasAnyDescendant
++import androidx.compose.ui.test.hasText
 +import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 +import androidx.compose.ui.test.onNodeWithTag
++import androidx.compose.ui.test.onNodeWithText
 +import androidx.compose.ui.test.onAllNodesWithTag
 +import androidx.compose.ui.test.onRoot
 +import androidx.compose.ui.test.printToLog
@@ -94,6 +102,9 @@ index 0000000..0aeda6d
 +            val baseline = originalDay ?: WorkDay(todayKey)
 +            val emptyTestDay = baseline.copy(
 +                date = todayKey,
++                dayType = "کاری",
++                dayTypeManual = true,
++                attendanceStatus = "",
 +                in1 = "", out1 = "", in2 = "", out2 = "",
 +                in3 = "", out3 = "", in4 = "", out4 = "",
 +                holidayIn = "", holidayOut = "",
@@ -110,13 +121,16 @@ index 0000000..0aeda6d
 +            cleanupDb.close()
 +        }
 +
-+        // The entry row lives below the initial viewport in this LazyColumn.
-+        // Scroll to it before asserting visibility; waiting alone cannot compose an off-screen item.
-+        scrollToDailyTimeEntry()
++        // Stabilize the first activity composition without depending on a workday-only field.
++        composeRule.waitForIdle()
++        composeRule.waitUntil(30_000) {
++            composeRule.onAllNodesWithTag("navigation-report-monthly")
++                .fetchSemanticsNodes().isNotEmpty()
++        }
 +        composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +        composeRule.onNodeWithTag("navigation-home").performClick()
-+        // HomeDashboard is recreated at the top after leaving the screen.
-+        scrollToDailyTimeEntry()
++        composeRule.waitForIdle()
++
 +    }
 +
 +    @After
@@ -149,6 +163,15 @@ index 0000000..0aeda6d
 +                managementDayForDate(readDb, todayKey).dayType == "کاری"
 +            )
 +
++            // The category and attendance editor are independent selections.
++            // Their selected semantics make the two-light requirement verifiable.
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("day-category-کاری"))
++            composeRule.onNodeWithTag("day-category-کاری").assertIsSelected()
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("attendance-status-عادی"))
++            composeRule.onNodeWithTag("attendance-status-عادی").assertIsSelected()
++
 +            // Recompose and scroll again after the DB check; LazyColumn may have reset
 +            // its viewport while the activity finishes the initial database reload.
 +            composeRule.waitForIdle()
@@ -158,7 +181,7 @@ index 0000000..0aeda6d
 +            composeRule.onNodeWithTag("daily-entry-in-hour").performClick().performTextInput("07")
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 2: after in-hour input")
 +            composeRule.onNodeWithTag("daily-entry-in-minute").performClick().performTextInput("10")
-+            composeRule.onNodeWithTag("daily-entry-out-hour").performClick().performTextInput("13")
++            composeRule.onNodeWithTag("daily-entry-out-hour").performClick().performTextInput("16")
 +            composeRule.onNodeWithTag("daily-entry-out-minute").performClick().performTextInput("20")
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 3: before IME action")
 +            composeRule.onNodeWithTag("daily-entry-out-minute").performImeAction()
@@ -173,16 +196,45 @@ index 0000000..0aeda6d
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 7: waiting for DB persistence")
 +            composeRule.waitUntil(15_000) {
 +                val saved = readDb.getDay(todayKey)
-+                saved.in1 == "07:10" && saved.out1 == "13:20"
++                saved.in1 == "07:10" && saved.out1 == "16:20"
 +            }
 +
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 8: DB persistence confirmed")
++
++            // The saved interval is 07:10-16:20; all summaries must use the same 09:10 total.
++            composeRule.onNodeWithTag("daily-editor-list").performScrollToIndex(0)
++            composeRule.waitUntil(15_000) {
++                runCatching {
++                    composeRule.onNodeWithTag("daily-worked-value").assertTextEquals("۰۹:۱۰")
++                }.isSuccess
++            }
++            composeRule.onNodeWithTag("daily-editor-list")
++                .performScrollToNode(hasTestTag("daily-worked-value"))
++            composeRule.onNodeWithTag("daily-worked-value").assertTextEquals("۰۹:۱۰")
 +            // Home is removed from composition while the monthly report is shown.
 +            // Returning to Home must reload the committed row, not a stale editor copy.
 +            composeRule.waitForIdle()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 9: before report navigation")
 +            composeRule.onNodeWithTag("navigation-report-monthly").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 10: report opened")
++            composeRule.onNodeWithTag("monthly-report-list").performScrollToIndex(1)
++            composeRule.waitUntil(15_000) {
++                runCatching {
++                    composeRule.onNodeWithTag("summary-worked-value").assertTextEquals("۰۹:۱۰")
++                }.isSuccess
++            }
++            composeRule.onNodeWithTag("monthly-report-list")
++                .performScrollToNode(hasTestTag("monthly-current-day-card"))
++            composeRule.onNodeWithTag("monthly-current-day-card", useUnmergedTree = true)
++                .assert(hasAnyDescendant(hasText("۰۹:۱۰")))
++            composeRule.onNodeWithTag("monthly-day-worked-value-$todayKey", useUnmergedTree = true)
++                .assertTextEquals("۰۹:۱۰")
++            // The daily editor treats an empty attendance_status as the default "عادی".
++            // The monthly day card must show that same effective state beside "کاری".
++            composeRule.onNodeWithTag("monthly-day-status-$todayKey-کاری", useUnmergedTree = true)
++                .assertIsDisplayed()
++            composeRule.onNodeWithTag("monthly-day-status-$todayKey-عادی", useUnmergedTree = true)
++                .assertIsDisplayed()
 +            composeRule.onNodeWithTag("navigation-home").performClick()
 +            Log.i("DailyUiFlowTest", "CHECKPOINT 11: home reopened")
 +            // Returning from the report recreates HomeDashboard at the top of its LazyColumn.
@@ -190,7 +242,7 @@ index 0000000..0aeda6d
 +
 +            composeRule.onNodeWithTag("daily-entry-in-hour").assertTextEquals("۰۷")
 +            composeRule.onNodeWithTag("daily-entry-in-minute").assertTextEquals("۱۰")
-+            composeRule.onNodeWithTag("daily-entry-out-hour").assertTextEquals("۱۳")
++            composeRule.onNodeWithTag("daily-entry-out-hour").assertTextEquals("۱۶")
 +            composeRule.onNodeWithTag("daily-entry-out-minute").assertTextEquals("۲۰")
 +        } finally {
 +            readDb.close()
@@ -213,6 +265,34 @@ index 0000000..0aeda6d
 +        composeRule.onNodeWithTag("monthly-report-list")
 +            .performScrollToNode(hasTestTag("monthly-current-day-card"))
 +        composeRule.onNodeWithTag("monthly-current-day-card").assertIsDisplayed()
++    }
++
++    @Test
++    fun eidAlAdha1405IsAnOfficialHolidayInTheMonthlyCard() {
++        composeRule.onNodeWithTag("navigation-report-monthly").performClick()
++        composeRule.onNodeWithTag("monthly-year-picker").performClick()
++        composeRule.onNodeWithText("۱۴۰۵").performClick()
++        composeRule.onNodeWithTag("monthly-month-picker").performClick()
++        composeRule.onNodeWithText("خرداد").performClick()
++
++        val date = "1405-03-06"
++        composeRule.onNodeWithTag("monthly-report-list")
++            .performScrollToNode(hasTestTag("monthly-day-card-$date"))
++        composeRule.onNodeWithTag("monthly-day-card-$date").assertIsDisplayed()
++        val cardPixels = composeRule.onNodeWithTag("monthly-day-card-$date").captureToImage().toPixelMap()
++        val hasSoftRedHolidayFill = (0 until cardPixels.height).any { y ->
++            (0 until cardPixels.width).any { x -> cardPixels[x, y] == Color(0xFFFFF5F5) }
++        }
++        assertTrue(
++            "The official-holiday card must render its soft-red background",
++            hasSoftRedHolidayFill
++        )
++        composeRule.onNodeWithTag("monthly-holiday-card-$date", useUnmergedTree = true).assertIsDisplayed()
++        composeRule.onNodeWithTag("monthly-day-status-$date-تعطیل رسمی", useUnmergedTree = true).assertIsDisplayed()
++        assertTrue(
++            "A working-day status must not appear for an official holiday",
++            composeRule.onAllNodesWithTag("monthly-day-status-$date-کاری", useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
++        )
 +    }
 +}
 diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
@@ -352,7 +432,7 @@ index 1290bb5..0eba92a 100644
                          shiftDuration = periodSessionMinutes(shiftsForDay),
                          hasShift = shiftsForDay.isNotEmpty(),
                          activityCount = shiftsForDay.size,
-+                        modifier = Modifier.testTag(if (reportDay.date == todayJalali) "monthly-current-day-card" else "monthly-day-card"),
++                        modifier = Modifier.testTag(if (reportDay.date == todayJalali) "monthly-current-day-card" else "monthly-day-card-${reportDay.date}"),
                          selected = isSelected,
                          selectionMode = selectionMode,
                          onClick = {
@@ -556,3 +636,263 @@ index 0000000..e0ed6bf0d6bde74f6050ac1d56de0d23bbfce972
 +        assertEquals("", enforced.attendanceStatus)
 +    }
 +}
+
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -3820,1 +3820,1 @@
+-                        OutlinedButton(onClick = { monthMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
++                        OutlinedButton(onClick = { monthMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-month-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
+@@ -3834,1 +3834,1 @@
+-                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
++                    OutlinedButton(onClick = { yearMenuExpanded = true }, modifier = Modifier.fillMaxWidth().testTag("monthly-year-picker"), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 7.dp)) {
+@@ -4125,1 +4125,1 @@
+-    day: WorkDay,
++    sourceDay: WorkDay,
+@@ -4136,3 +4136,13 @@
+ ) {
++    val day = remember(sourceDay, db) {
++        val canonicalDate = normalizedJalaliDateKey(sourceDay.date) ?: sourceDay.date
++        val calendarYear = canonicalDate.take(4).toIntOrNull() ?: 0
++        resolveCalendarWorkdayStatus(
++            current = sourceDay.copy(date = canonicalDate),
++            hasManualDayType = sourceDay.dayTypeManual,
++            isFriday = jalaliWeekday(canonicalDate) == 5,
++            isOfficialHoliday = canonicalDate in calendarOfficialHolidayDates(db, calendarYear)
++        ).copy(date = canonicalDate)
++    }
+     val weekDay = jalaliWeekday(day.date)?.let { JalaliWeekdayNames.getOrNull(it) }.orEmpty()
+     val holidayEntryExists = isHolidayWorkDay(day)
+@@ -4186,3 +4186,4 @@
+         Column(
+-            Modifier.fillMaxWidth().padding(7.dp),
++            Modifier.fillMaxWidth().padding(7.dp)
++                .testTag(if (isHolidayCard) "monthly-holiday-card-${day.date}" else "monthly-ordinary-card-${day.date}"),
+             verticalArrangement = Arrangement.spacedBy(6.dp)
+@@ -4268,1 +4269,2 @@
+-                                    status,
++                                    status,
++                                    modifier = Modifier.testTag("monthly-day-status-${day.date}-$status"),
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -2421,1 +2421,1 @@
+-                        ReportMetricTile("کل کارکرد", hm(worked), "◷", Color(0xFF153F78), Modifier.weight(1f))
++                        ReportMetricTile("کل کارکرد", hm(worked), "◷", Color(0xFF153F78), Modifier.weight(1f), testTag = "summary-worked-value")
+@@ -2926,1 +2926,1 @@
+-                    SummaryMiniTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF075565), Modifier.weight(1f))
++                    SummaryMiniTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF075565), Modifier.weight(1f), testTag = "daily-worked-value")
+@@ -3445,5 +3445,5 @@
+-private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier) {
++private fun SummaryMiniTile(label: String, value: String, background: Color, foreground: Color, modifier: Modifier, testTag: String? = null) {
+     Card(modifier = modifier.border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(10.dp)), colors = CardDefaults.cardColors(containerColor = background), shape = RoundedCornerShape(10.dp)) {
+         Column(Modifier.fillMaxWidth().padding(horizontal = 3.dp, vertical = 7.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+             PersianText(label, fontSize = 10.sp, color = foreground, textAlign = TextAlign.Center, maxLines = 1)
+-            PersianText(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
++            PersianText(value, modifier = testTag?.let { Modifier.testTag(it) } ?: Modifier, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
+@@ -4111,8 +4111,8 @@
+-private fun ReportMetricTile(title: String, value: String, symbol: String, valueColor: Color, modifier: Modifier = Modifier) {
++private fun ReportMetricTile(title: String, value: String, symbol: String, valueColor: Color, modifier: Modifier = Modifier, testTag: String? = null) {
+     Column(modifier = modifier.heightIn(min = 86.dp).background(Color(0xFFF5FAFF), RoundedCornerShape(9.dp))
+         .border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(9.dp)).padding(horizontal = 3.dp, vertical = 6.dp),
+         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+         PersianText(title, fontSize = 10.sp, color = Color(0xFF315C8D), textAlign = TextAlign.Center, maxLines = 2, lineHeight = 12.sp)
+         Spacer(Modifier.height(2.dp))
+         PersianText(symbol, fontSize = 17.sp, color = valueColor, maxLines = 1)
+-        PersianText(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
++        PersianText(value, modifier = testTag?.let { Modifier.testTag(it) } ?: Modifier, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = valueColor, maxLines = 1)
+@@ -4311,1 +4311,1 @@
+-                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f))
++                ReportValueTile("کل کارکرد", hm(dayReportedWorkMinutes(day, db)), Color(0xFFEAF3FF), Color(0xFF153F78), Modifier.weight(1f), testTag = "monthly-day-worked-value-${day.date}")
+@@ -4347,6 +4347,6 @@
+-private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier) {
++private fun ReportValueTile(title: String, value: String, background: Color, foreground: Color, modifier: Modifier = Modifier, testTag: String? = null) {
+     Column(modifier = modifier.background(background, RoundedCornerShape(9.dp))
+         .border(1.dp, Color(0xFFD5E4F3), RoundedCornerShape(9.dp)).padding(horizontal = 5.dp, vertical = 8.dp),
+         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+         PersianText(title, fontSize = 11.sp, color = foreground, textAlign = TextAlign.Center, maxLines = 1)
+-        PersianText(value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
++        PersianText(value, modifier = testTag?.let { Modifier.testTag(it) } ?: Modifier, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = foreground, maxLines = 1)
++
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -216,7 +216,10 @@ internal fun dayStatuses(day: WorkDay): Set<String> = buildSet {
+     // Attendance is a separate vocabulary from the day category. In particular, an
+     // invalid/stale "کاری" value in attendance_status must never add a working-day
+     // badge to an official holiday card.
+-    if (day.attendanceStatus in attendanceStatuses &&
+-        (day.attendanceStatus != "عادی" || primaryDayType == "کاری")) {
+-        add(day.attendanceStatus)
++    val effectiveAttendanceStatus = day.attendanceStatus.ifBlank {
++        if (primaryDayType == "کاری") "عادی" else ""
++    }
++    if (effectiveAttendanceStatus in attendanceStatuses &&
++        (effectiveAttendanceStatus != "عادی" || primaryDayType == "کاری")) {
++        add(effectiveAttendanceStatus)
+     }
+
+diff --git a/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
+new file mode 100644
+index 0000000..be9a176e2f7c4cbd681aa783f8e65f53f7ced6a0
+--- /dev/null
++++ b/Karkard_Android_Project_v073/app/src/test/java/ir/karkard/app/DayStatusCompatibilityRegressionTest.kt
+@@ -0,0 +1,102 @@
++package ir.karkard.app
++
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++
++class DayStatusCompatibilityRegressionTest {
++    @Test
++    fun ordinaryWorkdayShowsWorkCategoryAndDefaultNormalAttendanceTogether() {
++        val statuses = dayStatuses(WorkDay(date = "1405-08-14", dayType = "کاری"))
++
++        assertTrue("A normal workday must include the working-day category", "کاری" in statuses)
++        assertTrue("A normal workday must include the default normal-attendance status", "عادی" in statuses)
++    }
++
++    @Test
++    fun explicitlySelectedNormalAttendanceRemainsVisible() {
++        val statuses = dayStatuses(
++            WorkDay(date = "1405-08-14", dayType = "کاری", attendanceStatus = "عادی")
++        )
++
++        assertTrue("Work category remains visible", "کاری" in statuses)
++        assertTrue("Explicit normal attendance remains visible", "عادی" in statuses)
++    }
++
++    @Test
++    fun missionReplacesDefaultNormalAttendance() {
++        val statuses = dayStatuses(
++            WorkDay(date = "1405-08-14", dayType = "کاری", attendanceStatus = "مأموریت")
++        )
++
++        assertTrue("Work category remains visible", "کاری" in statuses)
++        assertTrue("Mission remains visible", "مأموریت" in statuses)
++        assertFalse("Mission must not also show normal attendance", "عادی" in statuses)
++    }
++
++    @Test
++    fun entitledLeaveReplacesDefaultNormalAttendance() {
++        val statuses = dayStatuses(
++            WorkDay(date = "1405-08-14", dayType = "کاری", attendanceStatus = "استحقاقی")
++        )
++
++        assertTrue("Work category remains visible", "کاری" in statuses)
++        assertTrue("Entitled leave remains visible", "استحقاقی" in statuses)
++        assertFalse("Entitled leave must not also show normal attendance", "عادی" in statuses)
++    }
++
++    @Test
++    fun sickLeaveReplacesDefaultNormalAttendance() {
++        val statuses = dayStatuses(
++            WorkDay(date = "1405-08-14", dayType = "کاری", attendanceStatus = "استعلاجی")
++        )
++
++        assertTrue("Work category remains visible", "کاری" in statuses)
++        assertTrue("Sick leave remains visible", "استعلاجی" in statuses)
++        assertFalse("Sick leave must not also show normal attendance", "عادی" in statuses)
++    }
++
++    @Test
++    fun officialHolidayDoesNotReceiveDefaultNormalAttendance() {
++        val statuses = dayStatuses(WorkDay(date = "1405-03-06", dayType = "تعطیل رسمی"))
++
++        assertTrue("Official-holiday category remains visible", "تعطیل رسمی" in statuses)
++        assertFalse("Official holiday must not show normal attendance", "عادی" in statuses)
++    }
++
++    @Test
++    fun specialHolidayDoesNotReceiveDefaultNormalAttendance() {
++        val statuses = dayStatuses(WorkDay(date = "1405-08-14", dayType = "تعطیل خاص"))
++
++        assertTrue("Special-holiday category remains visible", "تعطیل خاص" in statuses)
++        assertFalse("Special holiday must not show normal attendance", "عادی" in statuses)
++    }
++
++    @Test
++    fun staleLegacyWorkAndNormalLabelsAreIgnoredOnOfficialHoliday() {
++        val statuses = dayStatuses(
++            WorkDay(
++                date = "1405-03-06",
++                dayType = "تعطیل رسمی",
++                attendanceStatus = "عادی",
++                extraDayTypes = "کاری|عادی"
++            )
++        )
++
++        assertTrue("Official-holiday category remains visible", "تعطیل رسمی" in statuses)
++        assertFalse("Stale working category must be ignored", "کاری" in statuses)
++        assertFalse("Stale normal attendance must be ignored", "عادی" in statuses)
++    }
++
++    @Test
++    fun choosingHolidayClearsExplicitNormalAttendance() {
++        val updated = toggleDayCategory(
++            WorkDay(date = "1405-08-14", dayType = "کاری", attendanceStatus = "عادی"),
++            "تعطیل رسمی"
++        )
++
++        assertTrue("Holiday category must be selected", updated.dayType == "تعطیل رسمی")
++        assertTrue("Normal attendance must be cleared", updated.attendanceStatus.isBlank())
++        assertFalse("Holiday must not be reported as a normal workday", "عادی" in dayStatuses(updated))
++    }
++}
+
+diff --git a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+--- a/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
++++ b/Karkard_Android_Project_v073/app/src/main/java/ir/karkard/app/MainActivity.kt
+@@ -45,1 +45,3 @@
+ import androidx.compose.ui.platform.testTag
++import androidx.compose.ui.semantics.selected
++import androidx.compose.ui.semantics.semantics
+
+@@ -2642,17 +2642,20 @@
+                         dayTypes.forEach { (type, symbol) ->
+-                            val selected = day.dayType == type
++                            val isSelected = day.dayType == type
+                             val locked = officialDate && type != "تعطیل رسمی"
+                             Card(
+-                                modifier = Modifier.weight(1f).height(62.dp).border(1.dp, if (selected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(10.dp)),
++                                modifier = Modifier.weight(1f).height(62.dp)
++                                    .testTag("day-category-$type")
++                                    .semantics { selected = isSelected }
++                                    .border(1.dp, if (isSelected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(10.dp)),
+                                 shape = RoundedCornerShape(10.dp),
+-                                colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFE3EEFF) else if (locked) Color(0xFFF1F1F1) else Color.White),
++                                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFE3EEFF) else if (locked) Color(0xFFF1F1F1) else Color.White),
+                                 onClick = { if (!locked) onDayChange(toggleDayCategory(day, type)) }
+                             ) {
+                                 Column(Modifier.fillMaxSize().padding(3.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+-                                    PersianText(symbol, fontSize = 18.sp, color = if (selected) Color(0xFF1556A6) else Color(0xFF426A6D))
+-                                    PersianText(type, fontSize = 10.sp, color = if (locked && !selected) Color.Gray else Color(0xFF1556A6), textAlign = TextAlign.Center, maxLines = 2)
++                                    PersianText(symbol, fontSize = 18.sp, color = if (isSelected) Color(0xFF1556A6) else Color(0xFF426A6D))
++                                    PersianText(type, fontSize = 10.sp, color = if (locked && !isSelected) Color.Gray else Color(0xFF1556A6), textAlign = TextAlign.Center, maxLines = 2)
+                                     if (locked) PersianText("غیرقابل تغییر", fontSize = 8.sp, color = Color.Gray)
+                                 }
+                             }
+                         }
+                     }
+
+@@ -2684,10 +2686,13 @@
+                         attendanceStatuses.forEach { status ->
+-                            val selected = if (status == "عادی") day.dayType == "کاری" && day.attendanceStatus in setOf("", "عادی") else day.attendanceStatus == status
++                            val isSelected = if (status == "عادی") day.dayType == "کاری" && day.attendanceStatus in setOf("", "عادی") else day.attendanceStatus == status
+                             val locked = status == "عادی" && day.dayType != "کاری"
+                             Card(
+-                                modifier = Modifier.weight(1f).height(58.dp).border(1.dp, if (selected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(9.dp)),
++                                modifier = Modifier.weight(1f).height(58.dp)
++                                    .testTag("attendance-status-$status")
++                                    .semantics { selected = isSelected }
++                                    .border(1.dp, if (isSelected) Color(0xFF6BA1F9) else Color(0xFFB6D0CE), RoundedCornerShape(9.dp)),
+                                 shape = RoundedCornerShape(9.dp),
+-                                colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFE3EEFF) else Color.White),
++                                colors = CardDefaults.cardColors(containerColor = if (isSelected) Color(0xFFE3EEFF) else Color.White),
+                                 onClick = { if (!locked) onDayChange(toggleAttendanceStatus(day, status)) }
+                             ) {
+                                 Box(Modifier.fillMaxSize().padding(2.dp), contentAlignment = Alignment.Center) {

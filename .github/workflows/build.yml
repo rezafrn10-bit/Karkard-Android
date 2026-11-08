@@ -103,6 +103,25 @@ jobs:
           gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
           test -f app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Package patched Kotlin source for regression review
+        shell: bash
+        env:
+          PROJECT_ROOT: ${{ steps.project.outputs.project_root }}
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE/$PROJECT_ROOT"
+          zip -qr "$RUNNER_TEMP/patched-kotlin-source.zip" \
+            app/src/main/java/ir/karkard/app \
+            app/src/test/java/ir/karkard/app \
+            app/src/androidTest/java/ir/karkard/app
+
+      - name: Upload patched Kotlin source for regression review
+        uses: actions/upload-artifact@v7
+        with:
+          name: patched-kotlin-source-review
+          path: ${{ runner.temp }}/patched-kotlin-source.zip
+          retention-days: 3
+
       - name: Upload debug APK and unit-test reports
         uses: actions/upload-artifact@v7
         with:
