@@ -1,0 +1,41 @@
+name: Inspect v044 source and validate baseline
+
+on:
+  push:
+    branches:
+      - work/v045-build
+    paths:
+      - '.github/workflows/inspect-v044.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate and extract uploaded v044 archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s Karkard_Android_Project.zip
+          unzip -tq Karkard_Android_Project.zip
+          mkdir project
+          unzip -q Karkard_Android_Project.zip -d project
+          echo '--- Gradle version metadata ---'
+          grep -nE 'applicationId|namespace|versionCode|versionName|compileSdk|minSdk|targetSdk' project/app/build.gradle.kts
+          echo '--- Source files ---'
+          find project/app/src/main -type f | sort
+          echo '--- UI anchors ---'
+          grep -RniE 'کارت روز|مجموع کارکرد|اضافه کار|مدت شیفت|رفتن به ثبت کارکرد این روز|مشاهده کارت روز|ماه قبل|ماه بعد|برای دیدن مناسبت' project/app/src/main/java || true
+          echo '--- Main source landmarks ---'
+          grep -nE 'fun .*Calendar|fun .*Month|fun .*Day|HorizontalPager|pointerInput|detectHorizontalDragGestures|animateScrollToItem|LazyColumn|ثبت کارکرد' project/app/src/main/java/ir/karkard/app/*.kt | head -300 || true
+      - name: Upload exact extracted v044 source
+        uses: actions/upload-artifact@v7
+        with:
+          name: v044-source-baseline
+          path: project/
+          if-no-files-found: error
+          retention-days: 7
